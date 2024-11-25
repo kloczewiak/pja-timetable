@@ -46,7 +46,7 @@ export async function getSemesters() {
   return semesters;
 }
 
-type WithViewstate<T> = {
+export type WithViewstate<T> = {
   viewstate: string;
   data: T;
 };
