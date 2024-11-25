@@ -1,101 +1,458 @@
-import Image from "next/image";
+"use client";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { interleave } from "@/lib/utilsReact";
+import { Check, ChevronDown } from "lucide-react";
+import Link from "next/link";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { useMediaQuery } from "usehooks-ts";
+import {
+  getSemesters,
+  getStudentGroups,
+  getStudies,
+  WithViewstate,
+} from "./lib/data";
 
-export default function Home() {
+export default function Page() {
+  const [semesters, setSemesters] = useState<string[]>();
+  const [studies, setStudies] = useState<string[]>();
+
+  const [selectedSemester, setSelectedSemester] = useState<string>();
+  const [selectedStudy, setSelectedStudy] = useState<string>();
+
+  useEffect(() => {
+    getSemesters().then((s) => {
+      setSemesters(s);
+      setSelectedSemester(s[0]);
+    });
+    getStudies().then((s) => {
+      setStudies(s);
+      setSelectedStudy(s[0]);
+    });
+  }, []);
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="flex flex-col items-center justify-center gap-5 py-5">
+      <Select value={selectedSemester} onValueChange={setSelectedSemester}>
+        <SelectTrigger className="w-48" disabled={!semesters}>
+          <SelectValue placeholder={!semesters ? "Ładowanie..." : ""} />
+        </SelectTrigger>
+        {semesters && (
+          <SelectContent>
+            {semesters.map((semester) => (
+              <SelectItem key={semester} value={semester}>
+                {semester}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        )}
+      </Select>
+      <StudyPopover
+        value={selectedStudy}
+        setValue={setSelectedStudy}
+        studies={studies}
+      />
+      {/* <pre className="max-w-full">{groups}</pre> */}
+      {selectedStudy && <StudentGroups study={selectedStudy} />}
+    </div>
+  );
+}
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+function StudyPopover({
+  studies,
+  value,
+  setValue,
+}: {
+  studies?: string[];
+  value?: string;
+  setValue: Dispatch<SetStateAction<string | undefined>>;
+}) {
+  const [open, setOpen] = useState(false);
+  const isDesktop = useMediaQuery("(min-width: 640px)");
+
+  const button = (
+    <Button
+      className="flex w-80 justify-between"
+      variant="outline"
+      role="combobox"
+      aria-expanded={open}
+    >
+      <div className="shrink overflow-hidden truncate">
+        {!studies ? "Ładowanie..." : (value ?? "Wybierz studia...")}
+      </div>
+      <ChevronDown className="opacity-50" />
+    </Button>
+  );
+
+  if (isDesktop) {
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild disabled={!studies}>
+          {button}
+        </PopoverTrigger>
+        {studies && (
+          <PopoverContent className="p-0">
+            <StudyList
+              studies={studies}
+              value={value}
+              setValue={setValue}
+              close={() => setOpen(false)}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          </PopoverContent>
+        )}
+      </Popover>
+    );
+  }
+
+  return (
+    <Drawer open={open} onOpenChange={setOpen}>
+      <DrawerTrigger asChild disabled={!studies}>
+        {button}
+      </DrawerTrigger>
+      {studies && (
+        <DrawerContent>
+          <StudyList
+            studies={studies}
+            value={value}
+            setValue={setValue}
+            close={() => setOpen(false)}
+          />
+        </DrawerContent>
+      )}
+    </Drawer>
+  );
+}
+
+function StudyList({
+  studies,
+  value,
+  setValue,
+  close,
+}: {
+  studies: string[];
+  value?: string;
+  setValue: Dispatch<SetStateAction<string | undefined>>;
+  close: () => void;
+}) {
+  return (
+    <Command>
+      <CommandInput placeholder="Wyszukaj studia..." className="text-base" />
+      <CommandList>
+        <CommandEmpty>Brak wyników</CommandEmpty>
+        <CommandGroup>
+          {studies.map((study) => (
+            <CommandItem
+              key={study}
+              value={study}
+              onSelect={() => {
+                setValue(() => study);
+                close();
+              }}
+            >
+              {value === study && <Check />}
+              {study}
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      </CommandList>
+    </Command>
+  );
+}
+
+function StudentGroups({ study }: { study: string }) {
+  const [loading, setLoading] = useState(true);
+  const [cachedGroups, setCachedGroups] = useState<
+    Record<string, WithViewstate<string[]>>
+  >({});
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+
+  const currentGroups = cachedGroups[study];
+
+  useEffect(() => {
+    setSelectedGroups([]);
+
+    if (!currentGroups) {
+      setLoading(true);
+      getStudentGroups(study).then((sg) => {
+        setCachedGroups((prev) => ({ ...prev, [study]: sg }));
+        setLoading(false);
+      });
+    }
+  }, [study]);
+
+  if (!currentGroups || loading) {
+    return <div>Loading...</div>;
+  }
+
+  const groups = currentGroups.data;
+
+  const keyedGroups = groups.map((group) => {
+    const key = group.match(/^.+? [\w.]+/)?.toString() || "Group";
+    const value = group.replace(key, "").replace(" - ", "").trim();
+
+    return {
+      key,
+      value,
+      ogValue: group,
+    };
+  });
+
+  const groupedBySemester = keyedGroups.reduce(
+    (prev, curr) => {
+      const index = prev.findIndex((p) => p.name === curr.key);
+      if (index !== -1) {
+        prev[index].options.push({ value: curr.value, ogValue: curr.ogValue });
+      } else {
+        prev.push({
+          name: curr.key,
+          options: [{ value: curr.value, ogValue: curr.ogValue }],
+        });
+      }
+
+      return prev;
+    },
+    [] as { name: string; options: { value: string; ogValue: string }[] }[],
+  );
+
+  const toggleGroup = (group: string) => {
+    if (selectedGroups.includes(group)) {
+      setSelectedGroups((prev) => prev.filter((g) => g !== group));
+    } else {
+      setSelectedGroups((prev) => [...prev, group]);
+    }
+  };
+
+  return (
+    <div className="w-full">
+      <div className="mx-auto hidden w-full max-w-[1024px] grid-cols-2 gap-5 px-5 sm:grid">
+        <div className="flex flex-col gap-5">
+          {groupedBySemester
+            .filter((_, i) => i % 2 === 0)
+            .map((group) => (
+              <SemesterGroup
+                key={group.name}
+                name={group.name}
+                options={group.options}
+                selectedGroups={selectedGroups}
+                toggleGroup={toggleGroup}
+              />
+            ))}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+        <div className="flex flex-col gap-5">
+          {groupedBySemester
+            .filter((_, i) => i % 2 === 1)
+            .map((group) => (
+              <SemesterGroup
+                key={group.name}
+                name={group.name}
+                options={group.options}
+                selectedGroups={selectedGroups}
+                toggleGroup={toggleGroup}
+              />
+            ))}
+        </div>
+      </div>
+      <div className="flex w-full flex-col gap-5 px-5 sm:hidden">
+        {groupedBySemester.map((group) => (
+          <SemesterGroup
+            key={group.name}
+            name={group.name}
+            options={group.options}
+            selectedGroups={selectedGroups}
+            toggleGroup={toggleGroup}
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+        ))}
+      </div>
+      <div className="sticky bottom-0 w-full mt-3 py-2 backdrop-blur-sm">
+        <div className="mx-auto max-w-screen-lg px-5 flex flex-row-reverse flex-wrap-reverse items-end gap-2">
+          <div className="flex basis-full flex-col items-center sm:basis-auto">
+            <Link
+              className={buttonVariants({ variant: "default" })}
+              href={{
+                pathname: "/timetable",
+                query: {
+                  study,
+                  groups: selectedGroups,
+                },
+              }}
+            >
+              Zobacz Plan
+            </Link>
+          </div>
+          {selectedGroups.map((group) => (
+            <Badge
+              key={group}
+              variant="default"
+              onClick={() => toggleGroup(group)}
+            >
+              {group}
+            </Badge>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SemesterGroup({
+  name,
+  options,
+  selectedGroups,
+  toggleGroup,
+}: {
+  name: string;
+  options: { value: string; ogValue: string }[];
+  selectedGroups: string[];
+  toggleGroup: (group: string) => void;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{name}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <AllGroupTypes
+          options={options}
+          selectedGroups={selectedGroups}
+          toggleGroup={toggleGroup}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+function AllGroupTypes({
+  options,
+  selectedGroups,
+  toggleGroup,
+}: {
+  options: { value: string; ogValue: string }[];
+  selectedGroups: string[];
+  toggleGroup: (group: string) => void;
+}) {
+  const groupedByType = options.reduce(
+    (prev, curr) => {
+      const type = curr.value.replace(" ang", "").slice(-1);
+
+      const index = prev.findIndex((p) => p.type === type);
+      if (index !== -1) {
+        prev[index].options.push({ value: curr.value, ogValue: curr.ogValue });
+      } else {
+        prev.push({
+          type,
+          options: [{ value: curr.value, ogValue: curr.ogValue }],
+        });
+      }
+
+      return prev;
+    },
+    [] as { type: string; options: { value: string; ogValue: string }[] }[],
+  );
+
+  const order = ["w", "c", "l", "p"];
+  const sorted = groupedByType.sort((a, b) => {
+    const indexA = order.indexOf(a.type);
+    const indexB = order.indexOf(b.type);
+
+    const fa = indexA === -1 ? 99 : indexA;
+    const fb = indexB === -1 ? 99 : indexB;
+
+    return fa - fb;
+  });
+
+  return (
+    <>
+      {interleave(
+        sorted.map((group) => (
+          <GroupType
+            key={group.type}
+            type={group.type}
+            options={group.options}
+            selectedGroups={selectedGroups}
+            toggleGroup={toggleGroup}
           />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        )),
+        <Separator />,
+      )}
+    </>
+  );
+}
+
+function GroupType({
+  type,
+  options,
+  selectedGroups,
+  toggleGroup,
+}: {
+  type: string;
+  options: { value: string; ogValue: string }[];
+  selectedGroups: string[];
+  toggleGroup: (group: string) => void;
+}) {
+  var typeName = "Inne";
+  switch (type) {
+    case "l":
+      typeName = "Lektoraty";
+      break;
+    case "w":
+      typeName = "Wykłady";
+      break;
+    case "c":
+      typeName = "Ćwiczenia";
+      break;
+    case "p":
+      typeName = "Praktyki (??)";
+      break;
+    default:
+      typeName = "Inne";
+      console.warn("Unknown group type", type);
+      break;
+  }
+
+  const optsJSON = options.map((o) => JSON.stringify(o));
+  const set = new Set(optsJSON);
+  const noDuplicates = [...set].map((o) => JSON.parse(o));
+
+  return (
+    <div className="border-t border-t-background py-3 first:border-none first:pt-0 last:pb-0">
+      <p>{typeName}</p>
+      <div className="mt-1 flex flex-wrap gap-2">
+        {noDuplicates.map((option) => (
+          <Badge
+            key={option.ogValue}
+            variant={
+              selectedGroups.includes(option.ogValue) ? "default" : "secondary"
+            }
+            className="cursor-pointer select-none px-2 py-1"
+            onClick={() => toggleGroup(option.ogValue)}
+          >
+            {option.value}
+          </Badge>
+        ))}
+      </div>
     </div>
   );
 }
