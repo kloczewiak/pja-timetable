@@ -6,13 +6,12 @@ import {
   lectureDetailsPayload,
   stringifyPayload,
   studentGroupsPayload,
-  timetablePayload,
   timetableWithDatePayload,
 } from "./payloads";
 
-export async function getStudies(english: boolean = false) {
+export async function getStudies() {
   const response = await fetch(
-    `https://planzajec.pjwstk.edu.pl${english ? "/eng" : ""}/PlanGrupy.aspx`,
+    `https://planzajec.pjwstk.edu.pl/PlanGrupy.aspx`,
   );
 
   if (!response.ok) {
@@ -29,9 +28,9 @@ export async function getStudies(english: boolean = false) {
   return groups;
 }
 
-export async function getSemesters(english: boolean = false) {
+export async function getSemesters() {
   const response = await fetch(
-    `https://planzajec.pjwstk.edu.pl${english ? "/eng" : ""}/PlanGrupy.aspx`,
+    `https://planzajec.pjwstk.edu.pl/PlanGrupy.aspx`,
   );
 
   if (!response.ok) {
