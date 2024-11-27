@@ -8,6 +8,7 @@ import {
   studentGroupsPayload,
   timetableWithDatePayload,
 } from "./payloads";
+import { parse as parseDate } from "date-fns";
 
 export async function getStudies() {
   const response = await fetch(
@@ -186,26 +187,26 @@ export type StudentCount = {
 
 export type ClassType = "Ćwiczenia" | "Wykład" | "Lektorat" | string;
 
-export type Time = {
-  hour: number;
-  minute: number;
-};
-
 export type LectureDetails = {
   studentCount: StudentCount;
   subjectName: string;
   subjectCode: string;
   classType: ClassType;
   groups: string[];
-  lecturers: string[];
+  lecturers: Lecturer[];
   building: string;
   room: string;
-  classDate: string;
-  startTime: Time;
-  endTime: Time;
+  roomDescription?: string;
+  startTime: Date;
+  endTime: Date;
   /** Duration in minutes */
   duration: number;
   MSTeamsCode: string;
+};
+
+export type Lecturer = {
+  firstName: string;
+  lastName: string;
 };
 
 export async function getLectureDetails(
@@ -262,6 +263,7 @@ export async function getLectureDetails(
 function parseLectureDetails(
   lecture: { name: string; value: string }[],
 ): LectureDetails {
+  console.log(lecture);
   const studentCountSplit = lecture[0].value.split(" ");
   const studentCount: StudentCount = {
     normal: parseInt(studentCountSplit[0]),
@@ -272,23 +274,23 @@ function parseLectureDetails(
   const subjectCode = lecture[2].value;
   const classType = lecture[3].value as ClassType;
   const groups = lecture[4].value.split(", ");
-  const lecturers = lecture[5].value.split(", ");
-  // TODO: Maybe just use the first character
-  const building = lecture[6].value;
-  const room = lecture[7].value;
-  const classDate = lecture[8].value;
 
-  const startTimeSplit = lecture[9].value.split(":");
-  const startTime: Time = {
-    hour: parseInt(startTimeSplit[0]),
-    minute: parseInt(startTimeSplit[1]),
-  };
+  const lecturers = lecture[5].value.split(", ").map((lecturer) => {
+    const [lastName, firstName] = lecturer.split(" ");
+    return { lastName, firstName };
+  });
 
-  const endTimeSplit = lecture[10].value.split(":");
-  const endTime: Time = {
-    hour: parseInt(endTimeSplit[0]),
-    minute: parseInt(endTimeSplit[1]),
-  };
+  // lecture[6] is for building but it's badly formatted
+
+  const [building, rest] = lecture[7].value.split(/[ /](.*)/);
+  const room = rest.match(/\d+/)?.[0] ?? "";
+  const roomDescription =
+    rest.replace(room, "").trim().replace("  ", " ") || undefined;
+
+  const classDate = parseDate(lecture[8].value, "dd.MM.yyyy", new Date());
+
+  const startTime = parseDate(lecture[9].value, "HH:mm:ss", classDate);
+  const endTime = parseDate(lecture[10].value, "HH:mm:ss", classDate);
 
   const duration = parseInt(lecture[11].value.replace(" min", ""));
   const MSTeamsCode = lecture[12].value;
@@ -302,7 +304,7 @@ function parseLectureDetails(
     lecturers,
     building,
     room,
-    classDate,
+    roomDescription,
     startTime,
     endTime,
     duration,

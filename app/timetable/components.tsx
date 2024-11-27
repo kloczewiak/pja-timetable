@@ -23,7 +23,7 @@ import {
   Calendar as FullCalendar,
 } from "@/components/ui/full-calendar";
 import { cn } from "@/lib/utils";
-import { parse as parseDate, startOfWeek } from "date-fns";
+import { format as formatDate, startOfWeek } from "date-fns";
 import { pl } from "date-fns/locale";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useSearchParams } from "next/navigation";
@@ -66,6 +66,7 @@ export default function Page() {
       const requests = timetable.data.map((item) =>
         getLectureDetails(item.id, item.value, timetable.viewstate).then(
           (out) => {
+            console.log(out);
             setLectures((prev) => [...prev, out]);
             setLoading(false);
             return out;
@@ -118,22 +119,10 @@ function DisplayCalendar({
     }
 
     return {
-      id:
-        lecture.subjectCode +
-        lecture.startTime.hour +
-        lecture.startTime.minute +
-        lecture.classDate,
-      start: parseDate(
-        `${lecture.classDate} ${lecture.startTime.hour}:${lecture.startTime.minute}`,
-        "d.M.yyyy H:m",
-        new Date(),
-      ),
-      end: parseDate(
-        `${lecture.classDate} ${lecture.endTime.hour}:${lecture.endTime.minute}`,
-        "d.M.yyyy H:m",
-        new Date(),
-      ),
-      title: `${lecture.subjectCode} - ${lecture.classType}\n${lecture.room}`,
+      id: lecture.subjectCode + lecture.startTime + lecture.endTime,
+      start: lecture.startTime,
+      end: lecture.endTime,
+      title: `${lecture.subjectCode} - ${lecture.classType}\n${lecture.building}/${lecture.room}${lecture.roomDescription ? ` - ${lecture.roomDescription}` : ""}`,
       color: color,
       hover: {
         cardProps: { openDelay: 300, closeDelay: 150 },
@@ -246,8 +235,11 @@ function EventHoverContent({ lecture }: { lecture: LectureDetails }) {
             value={
               <div className="flex flex-col pt-0.5">
                 {lecture.lecturers.map((lecturer) => (
-                  <p key={lecturer} className="leading-5">
-                    {lecturer}
+                  <p
+                    key={`${lecturer.lastName} ${lecturer.firstName}`}
+                    className="leading-5"
+                  >
+                    {lecturer.lastName} {lecturer.firstName}
                   </p>
                 ))}
               </div>
@@ -256,26 +248,36 @@ function EventHoverContent({ lecture }: { lecture: LectureDetails }) {
         ) : (
           <EventHoverProperty
             label={getLecturerName(lecture.classType)}
-            value={lecture.lecturers[0]}
+            value={`${lecture.lecturers[0].lastName} ${lecture.lecturers[0].firstName}`}
           />
         )}
         <EventHoverProperty
           label={lecture.groups.length > 1 ? "Grupy" : "Grupa"}
           value={lecture.groups.join(", ")}
         />
-        <EventHoverProperty label="Sala" value={lecture.room} />
+        <EventHoverProperty
+          label="Sala"
+          value={`${lecture.building}/${lecture.room} ${
+            lecture.roomDescription ? ` - ${lecture.roomDescription}` : ""
+          }`}
+        />
         <EventHoverProperty
           label="Czas trwania"
           value={`${lecture.duration} min`}
         />
-        <EventHoverProperty label="Data" value={lecture.classDate} />
+        <EventHoverProperty
+          label="Data"
+          value={formatDate(lecture.startTime, "dd MMMM yyyy", {
+            locale: pl,
+          })}
+        />
         <EventHoverProperty
           label="Czas rozp."
-          value={`${lecture.startTime.hour}:${lecture.startTime.minute.toString().padEnd(2, "0")}`}
+          value={formatDate(lecture.startTime, "HH:mm", { locale: pl })}
         />
         <EventHoverProperty
           label="Czas zak."
-          value={`${lecture.endTime.hour}:${lecture.endTime.minute.toString().padEnd(2, "0")}`}
+          value={formatDate(lecture.endTime, "HH:mm", { locale: pl })}
         />
         {lecture.MSTeamsCode && (
           <EventHoverProperty
@@ -310,7 +312,7 @@ function EventHoverProperty({
 }) {
   return (
     <>
-      <p className="font-medium text-right">{label}:</p>
+      <p className="font-medium text-right">{label}</p>
       {typeof value === "string" || typeof value === "number" ? (
         <p>{value}</p>
       ) : (
