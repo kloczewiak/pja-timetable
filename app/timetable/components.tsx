@@ -27,7 +27,7 @@ import { format as formatDate, startOfWeek } from "date-fns";
 import { pl } from "date-fns/locale";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { ReactNode, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function Page() {
   const searchParams = useSearchParams();
@@ -232,18 +232,9 @@ function EventHoverContent({ lecture }: { lecture: LectureDetails }) {
         {lecture.lecturers.length > 1 ? (
           <EventHoverProperty
             label={getLecturerName(lecture.classType, true)}
-            value={
-              <div className="flex flex-col pt-0.5">
-                {lecture.lecturers.map((lecturer) => (
-                  <p
-                    key={`${lecturer.lastName} ${lecturer.firstName}`}
-                    className="leading-5"
-                  >
-                    {lecturer.lastName} {lecturer.firstName}
-                  </p>
-                ))}
-              </div>
-            }
+            value={lecture.lecturers.map(
+              (lecturer) => `${lecturer.lastName} ${lecturer.firstName}`,
+            )}
           />
         ) : (
           <EventHoverProperty
@@ -308,7 +299,7 @@ function EventHoverProperty({
   value,
 }: {
   label: string;
-  value: string | number | ReactNode;
+  value: string | string[] | number | number[];
 }) {
   return (
     <>
@@ -316,7 +307,13 @@ function EventHoverProperty({
       {typeof value === "string" || typeof value === "number" ? (
         <p>{value}</p>
       ) : (
-        value
+        <div className="flex flex-col pt-0.5">
+          {value.map((line) => (
+            <p key={line} className="leading-5">
+              {line}
+            </p>
+          ))}
+        </div>
       )}
     </>
   );
