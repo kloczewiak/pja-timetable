@@ -30,6 +30,7 @@ export async function getStudies() {
 }
 
 export async function getSemesters() {
+  // TODO: This should also return the viewstate
   const response = await fetch(
     `https://planzajec.pjwstk.edu.pl/PlanGrupy.aspx`,
     { cache: "no-cache" },
@@ -56,6 +57,7 @@ export type WithViewstate<T> = {
 export async function getStudentGroups(
   studies: string,
 ): Promise<WithViewstate<string[]>> {
+  // TODO: This should have viewstate as a parameter
   const payload = studentGroupsPayload(studies);
 
   const response = await fetch(
