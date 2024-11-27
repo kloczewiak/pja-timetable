@@ -102,6 +102,9 @@ export async function getTimetable(
   groups: number[],
   date?: { year: number; month: number; day: number },
 ): Promise<Timetable> {
+  // FIXME: Sometimes nothing is returned with this payload
+  // e.g. for "Zarządzanie informacją niestacjonarne"
+  // 1w, 11c, 112l, P.TEM 1w, P.TEM 11c, P.BHP 1w
   const payload = timetableWithDatePayload(
     viewstate,
     "2024/2025 zimowy",
