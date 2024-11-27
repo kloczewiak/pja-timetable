@@ -25,7 +25,8 @@ import {
 import { cn } from "@/lib/utils";
 import { format as formatDate, startOfWeek } from "date-fns";
 import { pl } from "date-fns/locale";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -143,7 +144,14 @@ function DisplayCalendar({
           onDateChange={setDate}
           hourDisplay={{ start: 6, count: 16 }}
         >
-          <div className="flex h-dvh flex-col p-4 pt-0">
+          <div className="flex h-dvh flex-col p-2 pt-0">
+            <Link
+              href="/"
+              className="flex items-center cursor-pointer h-10 hover:text-foreground/60 transition-colors"
+            >
+              <ArrowLeft />
+              <div>Wróć do wyboru grup</div>
+            </Link>
             <div className={cn("flex-1 relative basis-full max-w-full")}>
               {/* TODO: Implement this with framer motion */}
               {/* <div */}
@@ -187,6 +195,13 @@ function DisplayCalendar({
         >
           <div className="flex h-full flex-col gap-4">
             <div className="flex items-center gap-2">
+              <Link
+                href="/"
+                className="flex items-center cursor-pointer h-full hover:text-foreground/60 transition-colors"
+              >
+                <ArrowLeft />
+                <div>Wróć do wyboru grup</div>
+              </Link>
               <span className="flex-1" />
 
               <CalendarCurrentDate />
