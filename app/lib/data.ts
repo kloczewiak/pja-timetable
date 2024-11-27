@@ -12,6 +12,7 @@ import {
 export async function getStudies() {
   const response = await fetch(
     `https://planzajec.pjwstk.edu.pl/PlanGrupy.aspx`,
+    { cache: "no-cache" },
   );
 
   if (!response.ok) {
@@ -31,6 +32,7 @@ export async function getStudies() {
 export async function getSemesters() {
   const response = await fetch(
     `https://planzajec.pjwstk.edu.pl/PlanGrupy.aspx`,
+    { cache: "no-cache" },
   );
 
   if (!response.ok) {
@@ -66,6 +68,7 @@ export async function getStudentGroups(
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
       },
       body: stringifyPayload(payload),
+      cache: "no-cache",
     },
   );
 
@@ -75,7 +78,6 @@ export async function getStudentGroups(
 
   const text = await response.text();
   const newViewstate = getViewstate(text);
-  console.log(text);
   const doc = parse(text);
   const items = doc.querySelectorAll(
     "#ctl00_ContentPlaceHolder1_GrupyListBox ul > li",
@@ -102,9 +104,10 @@ export async function getTimetable(
   groups: number[],
   date?: { year: number; month: number; day: number },
 ): Promise<Timetable> {
-  // FIXME: Sometimes nothing is returned with this payload
+  // INFO: Sometimes nothing is returned with this payload
   // e.g. for "Zarządzanie informacją niestacjonarne"
   // 1w, 11c, 112l, P.TEM 1w, P.TEM 11c, P.BHP 1w
+  // This also happens on gakko so probably not fixable
   const payload = timetableWithDatePayload(
     viewstate,
     "2024/2025 zimowy",
@@ -123,6 +126,7 @@ export async function getTimetable(
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
       },
       body: stringifyPayload(payload),
+      cache: "no-cache",
     },
   );
 
@@ -219,6 +223,7 @@ export async function getLectureDetails(
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
       },
       body: stringifyPayload(payload),
+      next: { revalidate: 3600 },
     },
   );
 
