@@ -204,14 +204,14 @@ function DisplayCalendar({
 
               <CalendarPrevTrigger>
                 <ChevronLeft size={20} />
-                <span className="sr-only">Previous</span>
+                <span className="sr-only">Poprzedni</span>
               </CalendarPrevTrigger>
 
-              <CalendarTodayTrigger>Today</CalendarTodayTrigger>
+              <CalendarTodayTrigger>Dzisiaj</CalendarTodayTrigger>
 
               <CalendarNextTrigger>
                 <ChevronRight size={20} />
-                <span className="sr-only">Next</span>
+                <span className="sr-only">Nastepny</span>
               </CalendarNextTrigger>
             </div>
 
