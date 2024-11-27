@@ -10,7 +10,12 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 import {
   Popover,
   PopoverContent,
@@ -25,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { interleave } from "@/lib/utilsReact";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Check, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
@@ -134,6 +140,9 @@ function StudyPopover({
       </DrawerTrigger>
       {studies && (
         <DrawerContent>
+          <VisuallyHidden>
+            <DrawerTitle>Wybierz studia</DrawerTitle>
+          </VisuallyHidden>
           <StudyList
             studies={studies}
             value={value}
