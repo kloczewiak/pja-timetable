@@ -244,9 +244,11 @@ function EventHoverContent({ lecture }: { lecture: LectureDetails }) {
           <EventHoverProperty
             label={getLecturerName(lecture.classType, true)}
             value={
-              <div className="flex flex-col">
+              <div className="flex flex-col pt-0.5">
                 {lecture.lecturers.map((lecturer) => (
-                  <p key={lecturer}>{lecturer}</p>
+                  <p key={lecturer} className="leading-5">
+                    {lecturer}
+                  </p>
                 ))}
               </div>
             }
@@ -257,7 +259,10 @@ function EventHoverContent({ lecture }: { lecture: LectureDetails }) {
             value={lecture.lecturers[0]}
           />
         )}
-        <EventHoverProperty label="Grupy" value={lecture.groups.join(", ")} />
+        <EventHoverProperty
+          label={lecture.groups.length > 1 ? "Grupy" : "Grupa"}
+          value={lecture.groups.join(", ")}
+        />
         <EventHoverProperty label="Sala" value={lecture.room} />
         <EventHoverProperty
           label="Czas trwania"
