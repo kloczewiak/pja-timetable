@@ -2,6 +2,10 @@
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  HoverCardContentProps,
+  HoverCardProps,
+} from "@radix-ui/react-hover-card";
 import { VariantProps, cva } from "class-variance-authority";
 import {
   Locale,
@@ -31,6 +35,7 @@ import {
   useState,
 } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "./hover-card";
 
 const monthEventVariants = cva("size-2 rounded-full", {
   variants: {
@@ -89,6 +94,11 @@ export type CalendarEvent = {
   end: Date;
   title: string;
   color?: VariantProps<typeof monthEventVariants>["variant"];
+  hover?: {
+    cardProps?: HoverCardProps;
+    contentProps?: HoverCardContentProps;
+    content: ReactNode;
+  };
 };
 
 type CalendarProps = {
@@ -235,19 +245,28 @@ const EventGroup = ({
                 height: `calc(${hoursDifference * 100}% + 1px)`,
               }}
             >
-              <div
-                className={cn(
-                  "h-full",
-                  dayEventVariants({ variant: event.color }),
-                  hoursDifference < 1 && "flex-row gap-1",
-                )}
-              >
-                {event.title.split("\n").map((line) => (
-                  <div key={line} className="text-nowrap">
-                    {line}
+              <HoverCard {...event.hover?.cardProps}>
+                <HoverCardTrigger>
+                  <div
+                    className={cn(
+                      "h-full",
+                      dayEventVariants({ variant: event.color }),
+                      hoursDifference < 1 && "flex-row gap-1",
+                    )}
+                  >
+                    {event.title.split("\n").map((line) => (
+                      <div key={line} className="text-nowrap">
+                        {line}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </HoverCardTrigger>
+                {event.hover && (
+                  <HoverCardContent {...event.hover.contentProps}>
+                    {event.hover.content}
+                  </HoverCardContent>
+                )}
+              </HoverCard>
             </div>
           );
         })}

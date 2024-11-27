@@ -27,7 +27,7 @@ import { parse as parseDate, startOfWeek } from "date-fns";
 import { pl } from "date-fns/locale";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 
 export default function Page() {
   const searchParams = useSearchParams();
@@ -135,6 +135,11 @@ function DisplayCalendar({
       ),
       title: `${lecture.subjectCode} - ${lecture.classType}\n${lecture.room}`,
       color: color,
+      hover: {
+        cardProps: { openDelay: 300, closeDelay: 150 },
+        contentProps: { className: "p-0 w-80" },
+        content: <EventHoverContent lecture={lecture} />,
+      },
     };
   });
 
@@ -221,6 +226,91 @@ function DisplayCalendar({
           </div>
         </FullCalendar>
       </div>
+    </>
+  );
+}
+
+function EventHoverContent({ lecture }: { lecture: LectureDetails }) {
+  return (
+    <>
+      <CardHeader className="p-4 space-y-0.5">
+        <CardTitle className="text-lg leading-6">
+          {lecture.subjectName}
+        </CardTitle>
+        <CardDescription>{lecture.classType}</CardDescription>
+      </CardHeader>
+      <CardContent className="p-4 pt-0 grid grid-cols-[auto,_1fr] gap-x-2">
+        {lecture.lecturers.length > 1 ? (
+          <EventHoverProperty
+            label={getLecturerName(lecture.classType, true)}
+            value={
+              <div className="flex flex-col">
+                {lecture.lecturers.map((lecturer) => (
+                  <p key={lecturer}>{lecturer}</p>
+                ))}
+              </div>
+            }
+          />
+        ) : (
+          <EventHoverProperty
+            label={getLecturerName(lecture.classType)}
+            value={lecture.lecturers[0]}
+          />
+        )}
+        <EventHoverProperty label="Grupy" value={lecture.groups.join(", ")} />
+        <EventHoverProperty label="Sala" value={lecture.room} />
+        <EventHoverProperty
+          label="Czas trwania"
+          value={`${lecture.duration} min`}
+        />
+        <EventHoverProperty label="Data" value={lecture.classDate} />
+        <EventHoverProperty
+          label="Czas rozp."
+          value={`${lecture.startTime.hour}:${lecture.startTime.minute.toString().padEnd(2, "0")}`}
+        />
+        <EventHoverProperty
+          label="Czas zak."
+          value={`${lecture.endTime.hour}:${lecture.endTime.minute.toString().padEnd(2, "0")}`}
+        />
+        {lecture.MSTeamsCode && (
+          <EventHoverProperty
+            label="Kod MS Teams"
+            value={lecture.MSTeamsCode}
+          />
+        )}
+      </CardContent>
+    </>
+  );
+}
+
+function getLecturerName(classType: string, plural: boolean = false) {
+  switch (classType) {
+    case "Ćwiczenia":
+      return plural ? "Ćwiczeniowcy" : "Ćwiczeniowiec";
+    case "Wykład":
+      return plural ? "Wykładowcy" : "Wykładowca";
+    case "Lektorat":
+      return plural ? "Lektorzy" : "Lektor";
+    default:
+      return plural ? "Dydaktycy" : "Dydaktyk";
+  }
+}
+
+function EventHoverProperty({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number | ReactNode;
+}) {
+  return (
+    <>
+      <p className="font-medium text-right">{label}:</p>
+      {typeof value === "string" || typeof value === "number" ? (
+        <p>{value}</p>
+      ) : (
+        value
+      )}
     </>
   );
 }
