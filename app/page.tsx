@@ -33,7 +33,14 @@ import { interleave } from "@/lib/utilsReact";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Check, ChevronDown } from "lucide-react";
 import Link from "next/link";
-import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import {
+  createContext,
+  Dispatch,
+  SetStateAction,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { useMediaQuery } from "usehooks-ts";
 import {
   getSemesters,
@@ -191,6 +198,14 @@ function StudyList({
   );
 }
 
+type GroupsContextType = {
+  groups: string[];
+  setGroups: Dispatch<SetStateAction<string[]>>;
+  toggleGroup: (group: string) => void;
+};
+
+const GroupsContext = createContext<GroupsContextType>({} as GroupsContextType);
+
 function StudentGroups({ study }: { study: string }) {
   const [loading, setLoading] = useState(true);
   const [cachedGroups, setCachedGroups] = useState<
@@ -246,81 +261,88 @@ function StudentGroups({ study }: { study: string }) {
     [] as { name: string; options: { value: string; ogValue: string }[] }[],
   );
 
-  const toggleGroup = (group: string) => {
-    if (selectedGroups.includes(group)) {
-      setSelectedGroups((prev) => prev.filter((g) => g !== group));
-    } else {
-      setSelectedGroups((prev) => [...prev, group]);
-    }
-  };
-
   return (
-    <div className="w-full">
-      <div className="mx-auto hidden w-full max-w-[1024px] grid-cols-2 gap-5 px-5 sm:grid">
-        <div className="flex flex-col gap-5">
-          {groupedBySemester
-            .filter((_, i) => i % 2 === 0)
-            .map((group) => (
-              <SemesterGroup
-                key={group.name}
-                name={group.name}
-                options={group.options}
-                selectedGroups={selectedGroups}
-                toggleGroup={toggleGroup}
-              />
-            ))}
-        </div>
-        <div className="flex flex-col gap-5">
-          {groupedBySemester
-            .filter((_, i) => i % 2 === 1)
-            .map((group) => (
-              <SemesterGroup
-                key={group.name}
-                name={group.name}
-                options={group.options}
-                selectedGroups={selectedGroups}
-                toggleGroup={toggleGroup}
-              />
-            ))}
-        </div>
-      </div>
-      <div className="flex w-full flex-col gap-5 px-5 sm:hidden">
-        {groupedBySemester.map((group) => (
-          <SemesterGroup
-            key={group.name}
-            name={group.name}
-            options={group.options}
-            selectedGroups={selectedGroups}
-            toggleGroup={toggleGroup}
-          />
-        ))}
-      </div>
-      <div className="sticky bottom-0 w-full mt-3 py-2 backdrop-blur-sm">
-        <div className="mx-auto max-w-screen-lg px-5 flex flex-row-reverse flex-wrap-reverse items-end gap-2">
-          <div className="flex basis-full flex-col items-center sm:basis-auto">
-            <Link
-              className={buttonVariants({ variant: "default" })}
-              href={{
-                pathname: "/timetable",
-                query: {
-                  study,
-                  groups: selectedGroups,
-                },
-              }}
-            >
-              Zobacz Plan
-            </Link>
+    <GroupsContext.Provider
+      value={{
+        groups: selectedGroups,
+        setGroups: setSelectedGroups,
+        toggleGroup: (group) => {
+          if (selectedGroups.includes(group)) {
+            setSelectedGroups((prev) => prev.filter((g) => g !== group));
+          } else {
+            setSelectedGroups((prev) => [...prev, group]);
+          }
+        },
+      }}
+    >
+      <div className="w-full">
+        <div className="mx-auto hidden w-full max-w-[1024px] grid-cols-2 gap-5 px-5 sm:grid">
+          <div className="flex flex-col gap-5">
+            {groupedBySemester
+              .filter((_, i) => i % 2 === 0)
+              .map((group) => (
+                <SemesterGroup
+                  key={group.name}
+                  name={group.name}
+                  options={group.options}
+                />
+              ))}
           </div>
-          {selectedGroups.map((group) => (
-            <Badge
-              key={group}
-              variant="default"
-              onClick={() => toggleGroup(group)}
-            >
-              {group}
-            </Badge>
+          <div className="flex flex-col gap-5">
+            {groupedBySemester
+              .filter((_, i) => i % 2 === 1)
+              .map((group) => (
+                <SemesterGroup
+                  key={group.name}
+                  name={group.name}
+                  options={group.options}
+                />
+              ))}
+          </div>
+        </div>
+        <div className="flex w-full flex-col gap-5 px-5 sm:hidden">
+          {groupedBySemester.map((group) => (
+            <SemesterGroup
+              key={group.name}
+              name={group.name}
+              options={group.options}
+            />
           ))}
         </div>
+        <Controls study={study} />
+      </div>
+    </GroupsContext.Provider>
+  );
+}
+
+function Controls({ study }: { study: string }) {
+  const { groups, toggleGroup } = useContext(GroupsContext);
+  return (
+    <div className="sticky bottom-0 w-full mt-3 py-2 backdrop-blur-sm">
+      <div className="mx-auto max-w-screen-lg px-5 flex flex-row-reverse flex-wrap-reverse items-end gap-2">
+        <div className="flex basis-full flex-col items-center sm:basis-auto">
+          <Link
+            className={buttonVariants({ variant: "default" })}
+            href={{
+              pathname: "/timetable",
+              query: {
+                study,
+                groups,
+              },
+            }}
+          >
+            Zobacz Plan
+          </Link>
+        </div>
+        {groups.map((group) => (
+          <Badge
+            key={group}
+            variant="default"
+            onClick={() => toggleGroup(group)}
+          >
+            {group}
+          </Badge>
+        ))}
       </div>
     </div>
   );
@@ -329,13 +351,9 @@ function StudentGroups({ study }: { study: string }) {
 function SemesterGroup({
   name,
   options,
-  selectedGroups,
-  toggleGroup,
 }: {
   name: string;
   options: { value: string; ogValue: string }[];
-  selectedGroups: string[];
-  toggleGroup: (group: string) => void;
 }) {
   return (
     <Card>
@@ -343,11 +361,7 @@ function SemesterGroup({
         <CardTitle>{name}</CardTitle>
       </CardHeader>
       <CardContent>
-        <AllGroupTypes
-          options={options}
-          selectedGroups={selectedGroups}
-          toggleGroup={toggleGroup}
-        />
+        <AllGroupTypes options={options} />
       </CardContent>
     </Card>
   );
@@ -355,12 +369,8 @@ function SemesterGroup({
 
 function AllGroupTypes({
   options,
-  selectedGroups,
-  toggleGroup,
 }: {
   options: { value: string; ogValue: string }[];
-  selectedGroups: string[];
-  toggleGroup: (group: string) => void;
 }) {
   const groupedByType = options.reduce(
     (prev, curr) => {
@@ -400,8 +410,6 @@ function AllGroupTypes({
             key={group.type}
             type={group.type}
             options={group.options}
-            selectedGroups={selectedGroups}
-            toggleGroup={toggleGroup}
           />
         )),
         <Separator />,
@@ -413,14 +421,11 @@ function AllGroupTypes({
 function GroupType({
   type,
   options,
-  selectedGroups,
-  toggleGroup,
 }: {
   type: string;
   options: { value: string; ogValue: string }[];
-  selectedGroups: string[];
-  toggleGroup: (group: string) => void;
 }) {
+  const { groups, toggleGroup } = useContext(GroupsContext);
   var typeName = "Inne";
   switch (type) {
     case "l":
@@ -452,9 +457,7 @@ function GroupType({
         {noDuplicates.map((option) => (
           <Badge
             key={option.ogValue}
-            variant={
-              selectedGroups.includes(option.ogValue) ? "default" : "secondary"
-            }
+            variant={groups.includes(option.ogValue) ? "default" : "secondary"}
             className="cursor-pointer select-none px-2 py-1"
             onClick={() => toggleGroup(option.ogValue)}
           >
