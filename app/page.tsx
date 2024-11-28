@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { groupBy } from "@/lib/utils";
 import { interleave } from "@/lib/utilsReact";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Check, ChevronDown } from "lucide-react";
@@ -231,35 +232,19 @@ function StudentGroups({ study }: { study: string }) {
     return <div>Loading...</div>;
   }
 
-  const groups = currentGroups.data;
+  const keyedGroups: Array<Group & { semester: string }> =
+    currentGroups.data.map((group) => {
+      const semester = group.match(/^.+? [\w.]+/)?.toString() || "Group";
+      const value = group.replace(semester, "").replace(" - ", "").trim();
 
-  const keyedGroups = groups.map((group) => {
-    const key = group.match(/^.+? [\w.]+/)?.toString() || "Group";
-    const value = group.replace(key, "").replace(" - ", "").trim();
+      return {
+        id: group,
+        semester,
+        value,
+      };
+    });
 
-    return {
-      key,
-      value,
-      ogValue: group,
-    };
-  });
-
-  const groupedBySemester = keyedGroups.reduce(
-    (prev, curr) => {
-      const index = prev.findIndex((p) => p.name === curr.key);
-      if (index !== -1) {
-        prev[index].options.push({ value: curr.value, ogValue: curr.ogValue });
-      } else {
-        prev.push({
-          name: curr.key,
-          options: [{ value: curr.value, ogValue: curr.ogValue }],
-        });
-      }
-
-      return prev;
-    },
-    [] as { name: string; options: { value: string; ogValue: string }[] }[],
-  );
+  const groupedBySemester: Record<string, Group[]> = groupBy(keyedGroups, "semester");
 
   return (
     <GroupsContext.Provider
@@ -278,35 +263,23 @@ function StudentGroups({ study }: { study: string }) {
       <div className="w-full">
         <div className="mx-auto hidden w-full max-w-[1024px] grid-cols-2 gap-5 px-5 sm:grid">
           <div className="flex flex-col gap-5">
-            {groupedBySemester
+            {Object.entries(groupedBySemester)
               .filter((_, i) => i % 2 === 0)
-              .map((group) => (
-                <SemesterGroup
-                  key={group.name}
-                  name={group.name}
-                  options={group.options}
-                />
+              .map(([key, groups]) => (
+                <SemesterGroup key={key} name={key} groups={groups} />
               ))}
           </div>
           <div className="flex flex-col gap-5">
-            {groupedBySemester
+            {Object.entries(groupedBySemester)
               .filter((_, i) => i % 2 === 1)
-              .map((group) => (
-                <SemesterGroup
-                  key={group.name}
-                  name={group.name}
-                  options={group.options}
-                />
+              .map(([key, groups]) => (
+                <SemesterGroup key={key} name={key} groups={groups} />
               ))}
           </div>
         </div>
         <div className="flex w-full flex-col gap-5 px-5 sm:hidden">
-          {groupedBySemester.map((group) => (
-            <SemesterGroup
-              key={group.name}
-              name={group.name}
-              options={group.options}
-            />
+          {Object.entries(groupedBySemester).map(([key, groups]) => (
+            <SemesterGroup key={key} name={key} groups={groups} />
           ))}
         </div>
         <Controls study={study} />
@@ -348,53 +321,31 @@ function Controls({ study }: { study: string }) {
   );
 }
 
-function SemesterGroup({
-  name,
-  options,
-}: {
-  name: string;
-  options: { value: string; ogValue: string }[];
-}) {
+function SemesterGroup({ name, groups }: { name: string; groups: Group[] }) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>{name}</CardTitle>
       </CardHeader>
       <CardContent>
-        <AllGroupTypes options={options} />
+        <AllGroupTypes groups={groups} />
       </CardContent>
     </Card>
   );
 }
 
-function AllGroupTypes({
-  options,
-}: {
-  options: { value: string; ogValue: string }[];
-}) {
-  const groupedByType = options.reduce(
-    (prev, curr) => {
-      const type = curr.value.replace(" ang", "").slice(-1);
+function AllGroupTypes({ groups }: { groups: Group[] }) {
+  const withTypes: Array<Group & { type: string }> = groups.map((group) => {
+    const type = group.value.replace(" ang", "").slice(-1);
+    return { ...group, type };
+  });
 
-      const index = prev.findIndex((p) => p.type === type);
-      if (index !== -1) {
-        prev[index].options.push({ value: curr.value, ogValue: curr.ogValue });
-      } else {
-        prev.push({
-          type,
-          options: [{ value: curr.value, ogValue: curr.ogValue }],
-        });
-      }
-
-      return prev;
-    },
-    [] as { type: string; options: { value: string; ogValue: string }[] }[],
-  );
+  const groupedByType: Record<string, Group[]> = groupBy(withTypes, "type");
 
   const order = ["w", "c", "l", "p"];
-  const sorted = groupedByType.sort((a, b) => {
-    const indexA = order.indexOf(a.type);
-    const indexB = order.indexOf(b.type);
+  const sorted = Object.entries(groupedByType).sort(([keyA], [keyB]) => {
+    const indexA = order.indexOf(keyA);
+    const indexB = order.indexOf(keyB);
 
     const fa = indexA === -1 ? 99 : indexA;
     const fb = indexB === -1 ? 99 : indexB;
@@ -405,12 +356,8 @@ function AllGroupTypes({
   return (
     <>
       {interleave(
-        sorted.map((group) => (
-          <GroupType
-            key={group.type}
-            type={group.type}
-            options={group.options}
-          />
+        sorted.map(([type, value]) => (
+          <GroupType key={type} type={type} groups={value} />
         )),
         <Separator />,
       )}
@@ -418,14 +365,8 @@ function AllGroupTypes({
   );
 }
 
-function GroupType({
-  type,
-  options,
-}: {
-  type: string;
-  options: { value: string; ogValue: string }[];
-}) {
-  const { groups, toggleGroup } = useContext(GroupsContext);
+function GroupType({ type, groups }: { type: string; groups: Group[] }) {
+  const { groups: selectedGroups, toggleGroup } = useContext(GroupsContext);
   var typeName = "Inne";
   switch (type) {
     case "l":
@@ -446,9 +387,9 @@ function GroupType({
       break;
   }
 
-  const optsJSON = options.map((o) => JSON.stringify(o));
+  const optsJSON = groups.map((o) => JSON.stringify(o));
   const set = new Set(optsJSON);
-  const noDuplicates = [...set].map((o) => JSON.parse(o));
+  const noDuplicates: Group[] = [...set].map((o) => JSON.parse(o));
 
   return (
     <div className="border-t border-t-background py-3 first:border-none first:pt-0 last:pb-0">
@@ -456,10 +397,12 @@ function GroupType({
       <div className="mt-1 flex flex-wrap gap-2">
         {noDuplicates.map((option) => (
           <Badge
-            key={option.ogValue}
-            variant={groups.includes(option.ogValue) ? "default" : "secondary"}
+            key={option.id}
+            variant={
+              selectedGroups.includes(option.id) ? "default" : "secondary"
+            }
             className="cursor-pointer select-none px-2 py-1"
-            onClick={() => toggleGroup(option.ogValue)}
+            onClick={() => toggleGroup(option.id)}
           >
             {option.value}
           </Badge>
