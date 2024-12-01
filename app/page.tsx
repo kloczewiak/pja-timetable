@@ -1,7 +1,17 @@
 "use client";
+import {
+  ReactiveCookiesProvider,
+  useReactiveCookie,
+} from "@/components/providers/cookies";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Command,
   CommandEmpty,
@@ -29,6 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Group, GroupCookie } from "@/lib/types";
 import { groupBy } from "@/lib/utils";
 import { interleave } from "@/lib/utilsReact";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
@@ -70,27 +81,30 @@ export default function Page() {
 
   return (
     <div className="flex flex-col items-center justify-center gap-5 py-5">
-      <Select value={selectedSemester} onValueChange={setSelectedSemester}>
-        <SelectTrigger className="w-48" disabled={!semesters}>
-          <SelectValue placeholder={!semesters ? "Ładowanie..." : ""} />
-        </SelectTrigger>
-        {semesters && (
-          <SelectContent>
-            {semesters.map((semester) => (
-              <SelectItem key={semester} value={semester}>
-                {semester}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        )}
-      </Select>
-      <StudyPopover
-        value={selectedStudy}
-        setValue={setSelectedStudy}
-        studies={studies}
-      />
-      {/* <pre className="max-w-full">{groups}</pre> */}
-      {selectedStudy && <StudentGroups study={selectedStudy} />}
+      <ReactiveCookiesProvider>
+        <SavedGroups />
+        <Select value={selectedSemester} onValueChange={setSelectedSemester}>
+          <SelectTrigger className="w-48" disabled={!semesters}>
+            <SelectValue placeholder={!semesters ? "Ładowanie..." : ""} />
+          </SelectTrigger>
+          {semesters && (
+            <SelectContent>
+              {semesters.map((semester) => (
+                <SelectItem key={semester} value={semester}>
+                  {semester}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          )}
+        </Select>
+        <StudyPopover
+          value={selectedStudy}
+          setValue={setSelectedStudy}
+          studies={studies}
+        />
+        {/* <pre className="max-w-full">{groups}</pre> */}
+        {selectedStudy && <StudentGroups study={selectedStudy} />}
+      </ReactiveCookiesProvider>
     </div>
   );
 }
@@ -291,12 +305,95 @@ function StudentGroups({ study }: { study: string }) {
   );
 }
 
+function SavedGroups() {
+  const [groups, setGroups] = useReactiveCookie<GroupCookie[]>("groups", []);
+
+  if (groups.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="w-full max-w-screen-xl px-5">
+      <h3 className="text-center text-xl font-medium">Zapisane Grupy</h3>
+      <div className="grid grid-cols-[repeat(auto-fit,_minmax(0,_350px))] gap-5 justify-center mt-5">
+        {groups.map((group) => (
+          <Card key={JSON.stringify(group.groups)}>
+            <CardHeader className="p-4">
+              <CardTitle>{group.study}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2 p-4 pt-0">
+              {group.groups.map((g) => (
+                <Badge
+                  key={g}
+                  variant="secondary"
+                  className="pointer-events-none text-nowrap"
+                >
+                  {g}
+                </Badge>
+              ))}
+            </CardContent>
+            <CardFooter className="flex flex-wrap justify-end p-4 pt-0 gap-4">
+              <Link
+                href={{
+                  pathname: "/timetable",
+                  query: {
+                    study: group.study,
+                    groups: group.groups,
+                  },
+                }}
+                className={buttonVariants({ variant: "default" })}
+              >
+                Zobacz Plan
+              </Link>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  const newGroups = groups.filter((g) => !Object.is(g, group));
+                  setGroups(newGroups);
+                }}
+              >
+                Usuń
+              </Button>
+            </CardFooter>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Controls({ study }: { study: string }) {
   const { groups, toggleGroup } = useContext(GroupsContext);
+  const [savedGroups, setSavedGroups] = useReactiveCookie<GroupCookie[]>(
+    "groups",
+    [],
+  );
   return (
     <div className="sticky bottom-0 w-full mt-3 py-2 backdrop-blur-sm">
       <div className="mx-auto max-w-screen-lg px-5 flex flex-row-reverse flex-wrap-reverse items-end gap-2">
-        <div className="flex basis-full flex-col items-center sm:basis-auto">
+        <div className="flex basis-full justify-center gap-2 sm:basis-auto">
+          <Button
+            variant="secondary"
+            disabled={groups.length === 0}
+            onClick={() => {
+              const newCookie: GroupCookie = {
+                study,
+                groups,
+              };
+
+              // TODO: This is not a perfect approach,
+              // it doesn't check if the groups are the same but in different order
+              const isAlreadyInCookies = savedGroups.some(
+                (g) => JSON.stringify(g) == JSON.stringify(newCookie),
+              );
+
+              if (isAlreadyInCookies) return;
+
+              setSavedGroups([...savedGroups, newCookie]);
+            }}
+          >
+            Zapisz Grupy
+          </Button>
           <Link
             className={buttonVariants({ variant: "default" })}
             href={{
