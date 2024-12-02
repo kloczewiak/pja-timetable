@@ -298,14 +298,20 @@ const CalendarDayView = () => {
   );
 };
 
-const CalendarWeekView = () => {
+const CalendarWeekView = ({
+  startOnDay = 0,
+  endOnDay = 6,
+}: {
+  startOnDay?: number;
+  endOnDay?: number;
+}) => {
   const { view, date, locale, events, hourDisplay } = useCalendar();
 
   const weekDates = useMemo(() => {
     const start = startOfWeek(date, { weekStartsOn: 1 });
     const weekDates = [];
 
-    for (let i = 0; i < 7; i++) {
+    for (let i = startOnDay; i <= endOnDay; i++) {
       const day = addDays(start, i);
       const hours = [...Array(hourDisplay.count)].map((_, i) =>
         setHours(day, i + hourDisplay.start),
@@ -314,16 +320,16 @@ const CalendarWeekView = () => {
     }
 
     return weekDates;
-  }, [date]);
+  }, [date, startOnDay, endOnDay]);
 
   const headerDays = useMemo(() => {
     const daysOfWeek = [];
-    for (let i = 0; i < 7; i++) {
+    for (let i = startOnDay; i <= endOnDay; i++) {
       const result = addDays(startOfWeek(date, { weekStartsOn: 1 }), i);
       daysOfWeek.push(result);
     }
     return daysOfWeek;
-  }, [date]);
+  }, [date, startOnDay, endOnDay]);
 
   if (view !== "week") return null;
 
@@ -356,7 +362,12 @@ const CalendarWeekView = () => {
         <div className="w-fit">
           <TimeTable />
         </div>
-        <div className="grid flex-1 grid-cols-7">
+        <div
+          className="grid flex-1"
+          style={{
+            gridTemplateColumns: `repeat(${endOnDay - startOnDay + 1}, minmax(0, 1fr))`,
+          }}
+        >
           {weekDates.map((hours, i) => {
             return (
               <div

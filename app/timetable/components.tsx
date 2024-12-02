@@ -133,6 +133,20 @@ function DisplayCalendar({
     };
   });
 
+  const startWeekOn =
+    lectures.length > 0
+      ? Math.min(
+          ...lectures.map((lecture) => (lecture.startTime.getDay() + 6) % 7),
+        )
+      : undefined;
+
+  const endWeekOn =
+    lectures.length > 0
+      ? Math.max(
+          ...lectures.map((lecture) => (lecture.startTime.getDay() + 6) % 7),
+        )
+      : undefined;
+
   return (
     <>
       <div className="mx-auto w-full max-w-sm md:hidden">
@@ -225,7 +239,7 @@ function DisplayCalendar({
                 loading && "blur transition-none",
               )}
             >
-              <CalendarWeekView />
+              <CalendarWeekView startOnDay={startWeekOn} endOnDay={endWeekOn} />
             </div>
           </div>
         </FullCalendar>
