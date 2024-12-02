@@ -56,7 +56,6 @@ export default function Page() {
   useEffect(() => {
     getStudies().then((s) => {
       setStudies(s);
-      setSelectedStudy(s[0]);
     });
   }, []);
 
