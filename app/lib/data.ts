@@ -30,26 +30,6 @@ export async function getStudies() {
   return groups;
 }
 
-export async function getSemesters() {
-  // TODO: This should also return the viewstate
-  const response = await fetch(
-    `https://planzajec.pjwstk.edu.pl/PlanGrupy.aspx`,
-    { cache: "no-cache" },
-  );
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch semesters");
-  }
-
-  const text = await response.text();
-  const doc = parse(text);
-  const items = doc.querySelectorAll(
-    "#ctl00_ContentPlaceHolder1_SemestrComboBox_DropDown ul > li",
-  );
-  const semesters = items.map((item) => item.textContent ?? "");
-  return semesters;
-}
-
 export type WithViewstate<T> = {
   viewstate: string;
   data: T;
@@ -111,13 +91,7 @@ export async function getTimetable(
   // e.g. for "Zarządzanie informacją niestacjonarne"
   // 1w, 11c, 112l, P.TEM 1w, P.TEM 11c, P.BHP 1w
   // This also happens on gakko so probably not fixable
-  const payload = timetableWithDatePayload(
-    viewstate,
-    "2024/2025 zimowy",
-    studies,
-    groups,
-    date,
-  );
+  const payload = timetableWithDatePayload(viewstate, studies, groups, date);
 
   const response = await fetch(
     `https://planzajec.pjwstk.edu.pl/PlanGrupy.aspx`,

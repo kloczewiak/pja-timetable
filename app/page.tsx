@@ -31,13 +31,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Group, GroupCookie } from "@/lib/types";
 import { groupBy } from "@/lib/utils";
@@ -54,25 +47,13 @@ import {
   useState,
 } from "react";
 import { useMediaQuery } from "usehooks-ts";
-import {
-  getSemesters,
-  getStudentGroups,
-  getStudies,
-  WithViewstate,
-} from "./lib/data";
+import { getStudentGroups, getStudies, WithViewstate } from "./lib/data";
 
 export default function Page() {
-  const [semesters, setSemesters] = useState<string[]>();
   const [studies, setStudies] = useState<string[]>();
-
-  const [selectedSemester, setSelectedSemester] = useState<string>();
   const [selectedStudy, setSelectedStudy] = useState<string>();
 
   useEffect(() => {
-    getSemesters().then((s) => {
-      setSemesters(s);
-      setSelectedSemester(s[0]);
-    });
     getStudies().then((s) => {
       setStudies(s);
       setSelectedStudy(s[0]);
@@ -83,26 +64,11 @@ export default function Page() {
     <div className="flex flex-col items-center justify-center gap-5 py-5">
       <ReactiveCookiesProvider>
         <SavedGroups />
-        <Select value={selectedSemester} onValueChange={setSelectedSemester}>
-          <SelectTrigger className="w-48" disabled={!semesters}>
-            <SelectValue placeholder={!semesters ? "Ładowanie..." : ""} />
-          </SelectTrigger>
-          {semesters && (
-            <SelectContent>
-              {semesters.map((semester) => (
-                <SelectItem key={semester} value={semester}>
-                  {semester}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          )}
-        </Select>
         <StudyPopover
           value={selectedStudy}
           setValue={setSelectedStudy}
           studies={studies}
         />
-        {/* <pre className="max-w-full">{groups}</pre> */}
         {selectedStudy && <StudentGroups study={selectedStudy} />}
       </ReactiveCookiesProvider>
     </div>
