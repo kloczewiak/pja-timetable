@@ -306,7 +306,7 @@ export type TemporaryLectureDetails = {
   classType: string;
   building: string;
   room: string;
-  roomDescription: string;
+  roomDescription?: string;
   /** Duration in minutes */
   duration: number;
 };
@@ -385,13 +385,11 @@ function parseTemporaryLectureDetails(
 
       const rest2 = rest.replace(classType, "").trim();
 
-      const classMatch = rest2.match(/s\..+\d+/);
-      if (!classMatch) return;
-      const buildingRoom = classMatch[0].trim();
-
-      const [building, room] = buildingRoom.slice(2).split("/");
-
-      const roomDescription = rest2.replace(buildingRoom, "").trim();
+      const [buildingWithPrefix, rest3] = rest2.split(/[ /](.*)/);
+      const room = rest3.match(/\d+/)?.[0] ?? "";
+      const roomDescription =
+        rest3.replace(room, "").trim().replace("  ", " ") || undefined;
+      const building = buildingWithPrefix.slice(2);
 
       elements.push({
         startTime,
