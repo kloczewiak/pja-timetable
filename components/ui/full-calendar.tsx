@@ -261,9 +261,13 @@ const EventGroup = ({
                     ))}
                   </div>
                 </HoverCardTrigger>
-                {event.hover && (
+                {event.hover ? (
                   <HoverCardContent {...event.hover.contentProps}>
                     {event.hover.content}
+                  </HoverCardContent>
+                ) : (
+                  <HoverCardContent>
+                    <p>Ładowanie...</p>
                   </HoverCardContent>
                 )}
               </HoverCard>

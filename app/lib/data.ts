@@ -1,14 +1,20 @@
 "use server";
 // "use server" because there would be a CORS error if we tried to fetch this client-side
 
-import { Node as ParserNode, parse } from "node-html-parser";
+import { HTMLElement, Node as ParserNode, parse } from "node-html-parser";
 import {
   lectureDetailsPayload,
   stringifyPayload,
   studentGroupsPayload,
   timetableWithDatePayload,
 } from "./payloads";
-import { parse as parseDate } from "date-fns";
+import {
+  addDays,
+  addMinutes,
+  parse as parseDate,
+  setHours,
+  setMinutes,
+} from "date-fns";
 
 export async function getStudies() {
   const response = await fetch(
@@ -79,7 +85,12 @@ export type TimetableItem = {
   value: string;
 };
 
-export type Timetable = WithViewstate<TimetableItem[]>;
+export type TimetableData = {
+  items: TimetableItem[];
+  tempDetails?: TemporaryLectureDetails[];
+};
+
+export type Timetable = WithViewstate<TimetableData>;
 
 export async function getTimetable(
   viewstate: string,
@@ -138,7 +149,10 @@ export async function getTimetable(
   });
   return {
     viewstate: newViewstate,
-    data,
+    data: {
+      items: data,
+      tempDetails: parseTemporaryLectureDetails(text),
+    },
   };
 }
 
@@ -237,7 +251,6 @@ export async function getLectureDetails(
 function parseLectureDetails(
   lecture: { name: string; value: string }[],
 ): LectureDetails {
-  console.log(lecture);
   const studentCountSplit = lecture[0].value.split(" ");
   const studentCount: StudentCount = {
     normal: parseInt(studentCountSplit[0]),
@@ -284,6 +297,118 @@ function parseLectureDetails(
     duration,
     MSTeamsCode,
   };
+}
+
+export type TemporaryLectureDetails = {
+  startTime: Date;
+  endTime: Date;
+  subjectCode: string;
+  classType: string;
+  building: string;
+  room: string;
+  roomDescription: string;
+  /** Duration in minutes */
+  duration: number;
+};
+
+function parseTemporaryLectureDetails(
+  text: string,
+): TemporaryLectureDetails[] | undefined {
+  const doc = parse(text);
+  const table = doc.querySelector("table.rsContentTable");
+  if (!table) return;
+
+  // const dateH2 = doc.querySelector("h2");
+  // console.log(dateH2);
+  // if (!dateH2) return;
+  // const dateText = getTextNode(dateH2.childNodes);
+  const firstDayText = doc.text.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+  if (!firstDayText) return;
+  const firstDayOfWeek = parseDate(firstDayText[0], "dd.MM.yyyy", new Date());
+
+  const trs = table.childNodes
+    .filter((n) => n instanceof HTMLElement)
+    .filter((node) => node.rawTagName === "tr");
+
+  const elements: TemporaryLectureDetails[] = [];
+
+  trs.forEach((tr, trIndex) => {
+    const tds = tr.childNodes
+      .filter((n) => n instanceof HTMLElement)
+      .filter((node) => node.rawTagName === "td");
+    tds.forEach((td, tdIndex) => {
+      const adjustedDay = addDays(firstDayOfWeek, tdIndex);
+
+      const container = td.querySelector(".rsApt.rsAptSubject.rsAptSimple");
+      if (!container) {
+        return;
+      }
+      const hourDecimal = trIndex / 2 + 6;
+      const hourFraction = hourDecimal % 1;
+      const hour = hourDecimal - hourFraction;
+
+      const additionalMinutes = hourFraction * 60;
+
+      // Calculating start time based on position
+      const top = container.getAttribute("style")?.match(/top:(\d+)px/);
+      const topValue = top ? parseInt(top[1]) : 0;
+
+      const trHeight = tr.getAttribute("style")?.match(/height:(\d+)px/);
+      const trHeightValue = trHeight ? parseInt(trHeight[1]) : 0;
+
+      const estimatedMinutes = Math.round((topValue / trHeightValue) * 2) * 15;
+
+      const minutes = estimatedMinutes + additionalMinutes;
+
+      const startTime = setHours(setMinutes(adjustedDay, minutes), hour);
+
+      // Calculating end time
+      const height = container.getAttribute("style")?.match(/height:(\d+)px/);
+      const heightValue = height ? parseInt(height[1]) : 0;
+
+      const duration = Math.round((heightValue / trHeightValue) * 2) * 15;
+      const endTime = addMinutes(startTime, duration);
+
+      const content = container.querySelector(".rsAptContent");
+      if (!content) return;
+
+      const text = getTextNode(content.childNodes);
+      const subjectCodeMatch = text.match(/.+?( )/);
+      if (!subjectCodeMatch) return;
+      const subjectCode = subjectCodeMatch[0].trim();
+
+      const rest = text.replace(subjectCode, "").trim();
+
+      const classTypeMatch = rest.match(/.+?( )/);
+      if (!classTypeMatch) return;
+      const classType = classTypeMatch[0].trim();
+
+      const rest2 = rest.replace(classType, "").trim();
+
+      const classMatch = rest2.match(/s\..+\d+/);
+      if (!classMatch) return;
+      const buildingRoom = classMatch[0].trim();
+
+      const [building, room] = buildingRoom.slice(2).split("/");
+
+      const roomDescription = rest2.replace(buildingRoom, "").trim();
+
+      elements.push({
+        startTime,
+        endTime,
+        subjectCode,
+        classType,
+        building,
+        room,
+        roomDescription,
+        duration,
+      });
+    });
+  });
+
+  console.log(elements.length);
+
+  return elements;
 }
 
 function getViewstate(text: string): string {

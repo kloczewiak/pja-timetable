@@ -2,6 +2,7 @@
 
 import {
   LectureDetails,
+  TemporaryLectureDetails,
   getLectureDetails,
   getStudentGroups,
   getTimetable,
@@ -34,7 +35,9 @@ export default function Page() {
   const searchParams = useSearchParams();
 
   const [loading, setLoading] = useState(true);
-  const [lectures, setLectures] = useState<LectureDetails[]>([]);
+  const [lectures, setLectures] = useState<
+    (LectureDetails | TemporaryLectureDetails)[]
+  >([]);
   const [date, setDate] = useState<Date>();
 
   const startDate = date && startOfWeek(date, { weekStartsOn: 1 }).getTime();
@@ -62,24 +65,35 @@ export default function Page() {
         day: date.getDate(),
       });
 
-      setLectures([]);
+      if (timetable.data.tempDetails) {
+        setLoading(false);
+        setLectures(timetable.data.tempDetails);
+      } else {
+        setLectures([]);
+      }
 
-      const requests = timetable.data.map((item) =>
+      timetable.data.items.forEach((item) =>
         getLectureDetails(item.id, item.value, timetable.viewstate).then(
           (out) => {
-            console.log(out);
-            setLectures((prev) => [...prev, out]);
+            // console.log(out);
+            setLectures((prev) => {
+              const withTempRemoved = prev.filter(
+                (l) =>
+                  !(
+                    l.room === out.room &&
+                    l.startTime.getTime() === out.startTime.getTime() &&
+                    l.endTime.getTime() === out.endTime.getTime() &&
+                    l.subjectCode === out.subjectCode &&
+                    l.classType === out.classType
+                  ),
+              );
+              return [...withTempRemoved, out];
+            });
             setLoading(false);
             return out;
           },
         ),
       );
-
-      const data = await Promise.all(requests);
-      setLoading(false);
-      return;
-
-      setLectures(data);
     };
     run();
   }, [startDate]);
@@ -102,7 +116,7 @@ function DisplayCalendar({
   setDate,
   loading,
 }: {
-  lectures: LectureDetails[];
+  lectures: (LectureDetails | TemporaryLectureDetails)[];
   date?: Date;
   setDate: (date: Date) => void;
   loading?: boolean;
@@ -125,11 +139,15 @@ function DisplayCalendar({
       end: lecture.endTime,
       title: `${lecture.subjectCode} - ${lecture.classType}\n${lecture.building}/${lecture.room}${lecture.roomDescription ? ` - ${lecture.roomDescription}` : ""}`,
       color: color,
-      hover: {
-        cardProps: { openDelay: 300, closeDelay: 150 },
-        contentProps: { className: "p-0 w-80" },
-        content: <EventHoverContent lecture={lecture} />,
-      },
+      hover:
+        // If lecture is using temporary details, don't show hover
+        "lecturers" in lecture
+          ? {
+              cardProps: { openDelay: 300, closeDelay: 150 },
+              contentProps: { className: "p-0 w-80" },
+              content: <EventHoverContent lecture={lecture} />,
+            }
+          : undefined,
     };
   });
 
