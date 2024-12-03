@@ -251,7 +251,7 @@ const EventGroup = ({
                     className={cn(
                       "h-full",
                       dayEventVariants({ variant: event.color }),
-                      hoursDifference < 1 && "flex-row gap-1",
+                      hoursDifference < 1 && "flex flex-row gap-2",
                     )}
                   >
                     {event.title.split("\n").map((line) => (
