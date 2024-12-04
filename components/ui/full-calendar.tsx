@@ -5,7 +5,13 @@ import { cn } from "@/lib/utils";
 import {
   HoverCardContentProps,
   HoverCardProps,
+  HoverCardTriggerProps,
 } from "@radix-ui/react-hover-card";
+import {
+  PopoverContentProps,
+  PopoverProps,
+  PopoverTriggerProps,
+} from "@radix-ui/react-popover";
 import { VariantProps, cva } from "class-variance-authority";
 import {
   Locale,
@@ -35,7 +41,9 @@ import {
   useState,
 } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
+import { useMediaQuery } from "usehooks-ts";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "./hover-card";
+import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 
 const monthEventVariants = cva("size-2 rounded-full", {
   variants: {
@@ -245,8 +253,8 @@ const EventGroup = ({
                 height: `calc(${hoursDifference * 100}% + 1px)`,
               }}
             >
-              <HoverCard {...event.hover?.cardProps}>
-                <HoverCardTrigger>
+              <HybridTooltip {...event.hover?.cardProps}>
+                <HybridTooltipTrigger className="w-full h-full justify-start items-start">
                   <div
                     className={cn(
                       "h-full",
@@ -260,22 +268,66 @@ const EventGroup = ({
                       </div>
                     ))}
                   </div>
-                </HoverCardTrigger>
+                </HybridTooltipTrigger>
                 {event.hover ? (
-                  <HoverCardContent {...event.hover.contentProps}>
+                  <HybridTooltipContent {...event.hover.contentProps}>
                     {event.hover.content}
-                  </HoverCardContent>
+                  </HybridTooltipContent>
                 ) : (
-                  <HoverCardContent>
+                  <HybridTooltipContent>
                     <p>Ładowanie...</p>
-                  </HoverCardContent>
+                  </HybridTooltipContent>
                 )}
-              </HoverCard>
+              </HybridTooltip>
             </div>
           );
         })}
     </div>
   );
+};
+
+const isTouchDevice = () => {
+  const isCoarse = useMediaQuery("(pointer: coarse)");
+  return !isCoarse;
+};
+
+const HybridTooltip = (props: HoverCardProps & PopoverProps) => {
+  const isTouch = isTouchDevice();
+
+  if (isTouch) {
+    return <HoverCard {...props} />;
+  } else {
+    return <Popover {...props} />;
+  }
+};
+
+const HybridTooltipTrigger = ({
+  children,
+  ...props
+}: HoverCardTriggerProps & PopoverTriggerProps) => {
+  const isTouch = isTouchDevice();
+
+  if (isTouch) {
+    return <HoverCardTrigger {...props} children={children} />;
+  } else {
+    return (
+      <PopoverTrigger {...props} asChild>
+        <div>{children}</div>
+      </PopoverTrigger>
+    );
+  }
+};
+
+const HybridTooltipContent = (
+  props: HoverCardContentProps & PopoverContentProps,
+) => {
+  const isTouch = isTouchDevice();
+
+  if (isTouch) {
+    return <HoverCardContent {...props} />;
+  } else {
+    return <PopoverContent {...props} />;
+  }
 };
 
 const CalendarDayView = () => {
