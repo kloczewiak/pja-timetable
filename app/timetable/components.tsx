@@ -277,9 +277,15 @@ function DisplayCalendar({
 
             <div
               className={cn(
-                "flex-1 relative transition-[filter] basis-full max-w-full",
+                "flex-1 relative transition-[filter] basis-full self-center w-full",
                 loading && "blur transition-none",
               )}
+              style={{
+                maxWidth:
+                  endWeekOn !== undefined && startWeekOn !== undefined
+                    ? `${(endWeekOn - startWeekOn + 1) * 250}px`
+                    : "100%",
+              }}
             >
               <CalendarWeekView startOnDay={startWeekOn} endOnDay={endWeekOn} />
             </div>
