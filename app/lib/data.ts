@@ -422,10 +422,7 @@ function parseTemporaryLectureDetails(
       const heightValue = height ? parseInt(height[1]) : 0;
 
       const duration = Math.round((heightValue / trHeightValue) * 2) * 15;
-      const endTime = fromZonedTime(
-        addMinutes(startTime, duration),
-        "Europe/Warsaw",
-      );
+      const endTime = addMinutes(startTime, duration);
 
       const content = container.querySelector(".rsAptContent");
       if (!content) return;
