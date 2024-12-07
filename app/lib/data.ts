@@ -1,6 +1,7 @@
 "use server";
 // "use server" because there would be a CORS error if we tried to fetch this client-side
 
+import { fromZonedTime } from "date-fns-tz";
 import { HTMLElement, Node as ParserNode, parse } from "node-html-parser";
 import {
   lectureDetailsPayload,
@@ -16,7 +17,6 @@ import {
   setHours,
   setMinutes,
 } from "date-fns";
-import { pl } from "date-fns/locale";
 
 export async function getSemesters(): Promise<WithViewstate<string[]>> {
   const response = await fetch(
@@ -320,16 +320,16 @@ function parseLectureDetails(
   const roomDescription =
     rest.replace(room, "").trim().replace("  ", " ") || undefined;
 
-  const classDate = parseDate(lecture[8].value, "dd.MM.yyyy", new Date(), {
-    locale: pl,
-  });
+  const classDate = parseDate(lecture[8].value, "dd.MM.yyyy", new Date());
 
-  const startTime = parseDate(lecture[9].value, "HH:mm:ss", classDate, {
-    locale: pl,
-  });
-  const endTime = parseDate(lecture[10].value, "HH:mm:ss", classDate, {
-    locale: pl,
-  });
+  const startTime = fromZonedTime(
+    parseDate(lecture[9].value, "HH:mm:ss", classDate),
+    "Europe/Warsaw",
+  );
+  const endTime = fromZonedTime(
+    parseDate(lecture[10].value, "HH:mm:ss", classDate),
+    "Europe/Warsaw",
+  );
 
   const duration = parseInt(lecture[11].value.replace(" min", ""));
   const MSTeamsCode = lecture[12].value;
