@@ -412,14 +412,20 @@ function parseTemporaryLectureDetails(
 
       const minutes = estimatedMinutes + additionalMinutes;
 
-      const startTime = setHours(setMinutes(adjustedDay, minutes), hour);
+      const startTime = fromZonedTime(
+        setHours(setMinutes(adjustedDay, minutes), hour),
+        "Europe/Warsaw",
+      );
 
       // Calculating end time
       const height = container.getAttribute("style")?.match(/height:(\d+)px/);
       const heightValue = height ? parseInt(height[1]) : 0;
 
       const duration = Math.round((heightValue / trHeightValue) * 2) * 15;
-      const endTime = addMinutes(startTime, duration);
+      const endTime = fromZonedTime(
+        addMinutes(startTime, duration),
+        "Europe/Warsaw",
+      );
 
       const content = container.querySelector(".rsAptContent");
       if (!content) return;
