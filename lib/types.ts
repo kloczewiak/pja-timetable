@@ -4,6 +4,7 @@ export type Group = {
 };
 
 export type GroupCookie = {
+  semester: string;
   study: string;
   groups: string[];
 };

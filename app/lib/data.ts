@@ -6,6 +6,7 @@ import {
   lectureDetailsPayload,
   stringifyPayload,
   studentGroupsPayload,
+  studiesPayload,
   timetableWithDatePayload,
 } from "./payloads";
 import {
@@ -16,10 +17,52 @@ import {
   setMinutes,
 } from "date-fns";
 
-export async function getStudies() {
+export async function getSemesters(): Promise<WithViewstate<string[]>> {
   const response = await fetch(
     `https://planzajec.pjwstk.edu.pl/PlanGrupy.aspx`,
     { cache: "no-cache" },
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch semesters");
+  }
+
+  const text = await response.text();
+  const doc = parse(text);
+
+  const viewstate = doc.querySelector("#__VIEWSTATE")?.getAttribute("value");
+
+  const items = doc.querySelectorAll(
+    "#ctl00_ContentPlaceHolder1_SemestrComboBox_DropDown ul > li",
+  );
+
+  const semesters = items.map((item) => item.textContent ?? "");
+  return {
+    viewstate: viewstate ?? "",
+    data: semesters,
+  };
+}
+
+/**
+ * @param viewstate - viewstate obtained from getSemesters
+ */
+export async function getStudies(
+  viewstate: string,
+  semester: string,
+): Promise<WithViewstate<string[]>> {
+  const payload = studiesPayload(viewstate, semester);
+  const response = await fetch(
+    `https://planzajec.pjwstk.edu.pl/PlanGrupy.aspx`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
+      },
+      body: stringifyPayload(payload),
+      cache: "no-cache",
+    },
   );
 
   if (!response.ok) {
@@ -33,7 +76,10 @@ export async function getStudies() {
   );
 
   const groups = items.map((item) => item.textContent ?? "");
-  return groups;
+  return {
+    viewstate: getViewstate(text),
+    data: groups,
+  };
 }
 
 export type WithViewstate<T> = {
@@ -42,10 +88,10 @@ export type WithViewstate<T> = {
 };
 
 export async function getStudentGroups(
+  viewstate: string,
   studies: string,
 ): Promise<WithViewstate<string[]>> {
-  // TODO: This should have viewstate as a parameter
-  const payload = studentGroupsPayload(studies);
+  const payload = studentGroupsPayload(viewstate, studies);
 
   const response = await fetch(
     `https://planzajec.pjwstk.edu.pl/PlanGrupy.aspx`,
@@ -66,7 +112,6 @@ export async function getStudentGroups(
   }
 
   const text = await response.text();
-  const newViewstate = getViewstate(text);
   const doc = parse(text);
   const items = doc.querySelectorAll(
     "#ctl00_ContentPlaceHolder1_GrupyListBox ul > li",
@@ -74,7 +119,7 @@ export async function getStudentGroups(
 
   const groups = items.map((item) => item.textContent ?? "");
   return {
-    viewstate: newViewstate,
+    viewstate: getViewstate(text),
     data: groups,
   };
 }
@@ -403,8 +448,6 @@ function parseTemporaryLectureDetails(
       });
     });
   });
-
-  console.log(elements.length);
 
   return elements;
 }

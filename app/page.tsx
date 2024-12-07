@@ -3,11 +3,16 @@ import {
   ReactiveCookiesProvider,
   useReactiveCookie,
 } from "@/components/providers/cookies";
+import {
+  useViewstate,
+  ViewStateProvider,
+} from "@/components/providers/viewstate";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -31,6 +36,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Group, GroupCookie } from "@/lib/types";
 import { groupBy } from "@/lib/utils";
@@ -47,30 +59,83 @@ import {
   useState,
 } from "react";
 import { useMediaQuery } from "usehooks-ts";
-import { getStudentGroups, getStudies, WithViewstate } from "./lib/data";
+import { getSemesters, getStudentGroups, getStudies } from "./lib/data";
 
 export default function Page() {
+  const [viewstate, setViewstate] = useState<string>();
+
+  const [semesters, setSemesters] = useState<string[]>();
+  const [selectedSemester, setSelectedSemester] = useState<string>();
+
   const [studies, setStudies] = useState<string[]>();
   const [selectedStudy, setSelectedStudy] = useState<string>();
 
   useEffect(() => {
-    getStudies().then((s) => {
-      setStudies(s);
+    getSemesters().then((sem) => {
+      setViewstate(sem.viewstate);
+      setSemesters(sem.data);
     });
   }, []);
+
+  useEffect(() => {
+    if (!selectedSemester || !semesters || !viewstate) return;
+
+    getStudies(viewstate, selectedSemester).then((stud) => {
+      setViewstate(stud.viewstate);
+      setStudies(stud.data);
+    });
+  }, [selectedSemester]);
 
   return (
     <div className="flex flex-col items-center justify-center gap-5 py-5">
       <ReactiveCookiesProvider>
         <SavedGroups />
+        <SemesterPopover
+          value={selectedSemester}
+          setValue={setSelectedSemester}
+          semesters={semesters}
+        />
         <StudyPopover
           value={selectedStudy}
           setValue={setSelectedStudy}
           studies={studies}
         />
-        {selectedStudy && <StudentGroups study={selectedStudy} />}
+        {selectedStudy && selectedSemester && viewstate && (
+          <ViewStateProvider viewstate={viewstate} setViewstate={setViewstate}>
+            <StudentGroups semester={selectedSemester} study={selectedStudy} />
+          </ViewStateProvider>
+        )}
       </ReactiveCookiesProvider>
     </div>
+  );
+}
+
+function SemesterPopover({
+  semesters,
+  value,
+  setValue,
+}: {
+  semesters?: string[];
+  value?: string;
+  setValue: (value: string | undefined) => any;
+}) {
+  return (
+    <Select value={value} onValueChange={setValue}>
+      <SelectTrigger className="w-48" disabled={!semesters}>
+        <SelectValue
+          placeholder={!semesters ? "Ładowanie..." : "Wybierz semestr..."}
+        />
+      </SelectTrigger>
+      {semesters && (
+        <SelectContent>
+          {semesters.map((semester) => (
+            <SelectItem key={semester} value={semester}>
+              {semester}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      )}
+    </Select>
   );
 }
 
@@ -186,11 +251,19 @@ type GroupsContextType = {
 
 const GroupsContext = createContext<GroupsContextType>({} as GroupsContextType);
 
-function StudentGroups({ study }: { study: string }) {
+function StudentGroups({
+  semester,
+  study,
+}: {
+  semester: string;
+  study: string;
+}) {
+  const { viewstate } = useViewstate();
+
   const [loading, setLoading] = useState(true);
-  const [cachedGroups, setCachedGroups] = useState<
-    Record<string, WithViewstate<string[]>>
-  >({});
+  const [cachedGroups, setCachedGroups] = useState<Record<string, string[]>>(
+    {},
+  );
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
 
   const currentGroups = cachedGroups[study];
@@ -200,8 +273,8 @@ function StudentGroups({ study }: { study: string }) {
 
     if (!currentGroups) {
       setLoading(true);
-      getStudentGroups(study).then((sg) => {
-        setCachedGroups((prev) => ({ ...prev, [study]: sg }));
+      getStudentGroups(viewstate, study).then((sg) => {
+        setCachedGroups((prev) => ({ ...prev, [study]: sg.data }));
         setLoading(false);
       });
     }
@@ -211,8 +284,8 @@ function StudentGroups({ study }: { study: string }) {
     return <div>Loading...</div>;
   }
 
-  const keyedGroups: Array<Group & { semester: string }> =
-    currentGroups.data.map((group) => {
+  const keyedGroups: Array<Group & { semester: string }> = currentGroups.map(
+    (group) => {
       const semester = group.match(/^.+? [\w.]+/)?.toString() || "Group";
       const value = group.replace(semester, "").replace(" - ", "").trim();
 
@@ -221,7 +294,8 @@ function StudentGroups({ study }: { study: string }) {
         semester,
         value,
       };
-    });
+    },
+  );
 
   const groupedBySemester: Record<string, Group[]> = groupBy(
     keyedGroups,
@@ -264,7 +338,7 @@ function StudentGroups({ study }: { study: string }) {
             <SemesterGroup key={key} name={key} groups={groups} />
           ))}
         </div>
-        <Controls study={study} />
+        <Controls semester={semester} study={study} />
       </div>
     </GroupsContext.Provider>
   );
@@ -285,6 +359,7 @@ function SavedGroups() {
           <Card key={JSON.stringify(group.groups)}>
             <CardHeader className="p-4">
               <CardTitle>{group.study}</CardTitle>
+              <CardDescription>Semestr {group.semester}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2 p-4 pt-0">
               {group.groups.map((g) => (
@@ -302,6 +377,7 @@ function SavedGroups() {
                 href={{
                   pathname: "/timetable",
                   query: {
+                    semester: group.semester,
                     study: group.study,
                     groups: group.groups,
                   },
@@ -327,7 +403,7 @@ function SavedGroups() {
   );
 }
 
-function Controls({ study }: { study: string }) {
+function Controls({ semester, study }: { semester: string; study: string }) {
   const { groups, toggleGroup } = useContext(GroupsContext);
   const [savedGroups, setSavedGroups] = useReactiveCookie<GroupCookie[]>(
     "groups",
@@ -342,6 +418,7 @@ function Controls({ study }: { study: string }) {
             disabled={groups.length === 0}
             onClick={() => {
               const newCookie: GroupCookie = {
+                semester,
                 study,
                 groups,
               };
@@ -364,6 +441,7 @@ function Controls({ study }: { study: string }) {
             href={{
               pathname: "/timetable",
               query: {
+                semester,
                 study,
                 groups,
               },

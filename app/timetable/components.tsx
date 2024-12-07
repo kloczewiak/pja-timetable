@@ -4,7 +4,9 @@ import {
   LectureDetails,
   TemporaryLectureDetails,
   getLectureDetails,
+  getSemesters,
   getStudentGroups,
+  getStudies,
   getTimetable,
 } from "@/app/lib/data";
 import {
@@ -40,24 +42,46 @@ export default function Page() {
   >([]);
   const [date, setDate] = useState<Date>();
 
+  const [viewstate, setViewstate] = useState<string>();
+  const [studentGroups, setStudentGroups] = useState<string[]>();
+
   const startDate = date && startOfWeek(date, { weekStartsOn: 1 }).getTime();
 
+  const semester = searchParams.get("semester");
   const studyName = searchParams.get("study");
   const selectedGroups = searchParams.getAll("groups");
 
   useEffect(() => {
+    if (semester === null || studyName === null || selectedGroups.length === 0)
+      throw new Error("Missing study or group");
+
     setDate(new Date());
+
+    const run = async () => {
+      const { viewstate: viewstate1 } = await getSemesters();
+      const { viewstate: viewstate2 } = await getStudies(viewstate1, semester);
+
+      const { viewstate: viewstate3, data: groups } = await getStudentGroups(
+        viewstate2,
+        studyName,
+      );
+
+      setViewstate(viewstate3);
+      setStudentGroups(groups);
+    };
+    run();
   }, []);
 
   useEffect(() => {
-    if (studyName === null || selectedGroups.length === 0)
+    if (!semester || !studyName || selectedGroups.length === 0)
       throw new Error("Missing study or group");
     if (!date) return;
 
     const run = async () => {
+      if (!studentGroups || !viewstate) return;
       setLoading(true);
-      const { viewstate, data: groups } = await getStudentGroups(studyName);
-      const indexes = selectedGroups.map((g) => groups.indexOf(g));
+
+      const indexes = selectedGroups.map((g) => studentGroups.indexOf(g));
 
       const timetable = await getTimetable(viewstate, studyName, indexes, {
         year: date.getFullYear(),
@@ -96,7 +120,7 @@ export default function Page() {
       );
     };
     run();
-  }, [startDate]);
+  }, [startDate, viewstate, studentGroups]);
 
   return (
     <div className="flex flex-col gap-5">
