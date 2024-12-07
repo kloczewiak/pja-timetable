@@ -356,12 +356,12 @@ function SavedGroups() {
       <h3 className="text-center text-xl font-medium">Zapisane Grupy</h3>
       <div className="grid grid-cols-[repeat(auto-fit,_minmax(0,_350px))] gap-5 justify-center mt-5">
         {groups.map((group) => (
-          <Card key={JSON.stringify(group.groups)}>
+          <Card key={JSON.stringify(group.groups)} className="flex flex-col">
             <CardHeader className="p-4">
               <CardTitle>{group.study}</CardTitle>
               <CardDescription>Semestr {group.semester}</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-wrap gap-2 p-4 pt-0">
+            <CardContent className="flex flex-wrap gap-2 p-4 pt-0 grow items-start">
               {group.groups.map((g) => (
                 <Badge
                   key={g}
