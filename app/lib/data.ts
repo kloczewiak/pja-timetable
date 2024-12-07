@@ -16,6 +16,7 @@ import {
   setHours,
   setMinutes,
 } from "date-fns";
+import { pl } from "date-fns/locale";
 
 export async function getSemesters(): Promise<WithViewstate<string[]>> {
   const response = await fetch(
@@ -319,10 +320,16 @@ function parseLectureDetails(
   const roomDescription =
     rest.replace(room, "").trim().replace("  ", " ") || undefined;
 
-  const classDate = parseDate(lecture[8].value, "dd.MM.yyyy", new Date());
+  const classDate = parseDate(lecture[8].value, "dd.MM.yyyy", new Date(), {
+    locale: pl,
+  });
 
-  const startTime = parseDate(lecture[9].value, "HH:mm:ss", classDate);
-  const endTime = parseDate(lecture[10].value, "HH:mm:ss", classDate);
+  const startTime = parseDate(lecture[9].value, "HH:mm:ss", classDate, {
+    locale: pl,
+  });
+  const endTime = parseDate(lecture[10].value, "HH:mm:ss", classDate, {
+    locale: pl,
+  });
 
   const duration = parseInt(lecture[11].value.replace(" min", ""));
   const MSTeamsCode = lecture[12].value;
