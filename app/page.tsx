@@ -67,8 +67,14 @@ export default function Page() {
   const [semesters, setSemesters] = useState<string[]>();
   const [selectedSemester, setSelectedSemester] = useState<string>();
 
-  const [studies, setStudies] = useState<string[]>();
+  const [cachedStudies, setCachedStudies] = useState<Record<string, string[]>>(
+    {},
+  );
   const [selectedStudy, setSelectedStudy] = useState<string>();
+
+  const studies = selectedSemester
+    ? cachedStudies[selectedSemester]
+    : undefined;
 
   useEffect(() => {
     getSemesters().then((sem) => {
@@ -80,10 +86,17 @@ export default function Page() {
   useEffect(() => {
     if (!selectedSemester || !semesters || !viewstate) return;
 
-    getStudies(viewstate, selectedSemester).then((stud) => {
-      setViewstate(stud.viewstate);
-      setStudies(stud.data);
-    });
+    setSelectedStudy(undefined);
+
+    if (!studies) {
+      getStudies(viewstate, selectedSemester).then((stud) => {
+        setViewstate(stud.viewstate);
+        setCachedStudies((prev) => ({
+          ...prev,
+          [selectedSemester]: stud.data,
+        }));
+      });
+    }
   }, [selectedSemester]);
 
   return (
@@ -95,11 +108,13 @@ export default function Page() {
           setValue={setSelectedSemester}
           semesters={semesters}
         />
-        <StudyPopover
-          value={selectedStudy}
-          setValue={setSelectedStudy}
-          studies={studies}
-        />
+        {selectedSemester && (
+          <StudyPopover
+            value={selectedStudy}
+            setValue={setSelectedStudy}
+            studies={studies}
+          />
+        )}
         {selectedStudy && selectedSemester && viewstate && (
           <ViewStateProvider viewstate={viewstate} setViewstate={setViewstate}>
             <StudentGroups semester={selectedSemester} study={selectedStudy} />
