@@ -26,7 +26,7 @@ import {
   Calendar as FullCalendar,
 } from "@/components/ui/full-calendar";
 import { cn } from "@/lib/utils";
-import { format as formatDate, startOfWeek } from "date-fns";
+import { format as formatDate } from "date-fns";
 import { pl } from "date-fns/locale";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
@@ -45,15 +45,13 @@ export default function Page() {
   const [viewstate, setViewstate] = useState<string>();
   const [studentGroups, setStudentGroups] = useState<string[]>();
 
-  const startDate = date && startOfWeek(date, { weekStartsOn: 1 }).getTime();
-
   const semester = searchParams.get("semester");
   const studyName = searchParams.get("study");
   const selectedGroups = searchParams.getAll("groups");
 
   useEffect(() => {
     if (semester === null || studyName === null || selectedGroups.length === 0)
-      throw new Error("Missing study or group");
+      throw new Error("Missing semester, study or group");
 
     setDate(new Date());
 
@@ -73,8 +71,8 @@ export default function Page() {
   }, []);
 
   useEffect(() => {
-    if (!semester || !studyName || selectedGroups.length === 0)
-      throw new Error("Missing study or group");
+    if (!semester || selectedGroups.length === 0)
+      throw new Error("Missing semester or group");
     if (!date) return;
 
     const run = async () => {
@@ -83,7 +81,7 @@ export default function Page() {
 
       const indexes = selectedGroups.map((g) => studentGroups.indexOf(g));
 
-      const timetable = await getTimetable(viewstate, studyName, indexes, {
+      const timetable = await getTimetable(viewstate, indexes, {
         year: date.getFullYear(),
         month: date.getMonth() + 1,
         day: date.getDate(),
@@ -120,7 +118,7 @@ export default function Page() {
       );
     };
     run();
-  }, [startDate, viewstate, studentGroups]);
+  }, [date, viewstate, studentGroups]);
 
   return (
     <div className="flex flex-col gap-5">

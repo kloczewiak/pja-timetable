@@ -140,7 +140,6 @@ export type Timetable = WithViewstate<TimetableData>;
 
 export async function getTimetable(
   viewstate: string,
-  studies: string,
   groups: number[],
   date?: { year: number; month: number; day: number },
 ): Promise<Timetable> {
@@ -148,7 +147,7 @@ export async function getTimetable(
   // e.g. for "Zarządzanie informacją niestacjonarne"
   // 1w, 11c, 112l, P.TEM 1w, P.TEM 11c, P.BHP 1w
   // This also happens on gakko so probably not fixable
-  const payload = timetableWithDatePayload(viewstate, studies, groups, date);
+  const payload = timetableWithDatePayload(viewstate, groups, date);
 
   const response = await fetch(
     `https://planzajec.pjwstk.edu.pl/PlanGrupy.aspx`,

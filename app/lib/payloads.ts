@@ -25,8 +25,6 @@ export const studentGroupsPayload = (
 ) => ({
   ctl00$RadScriptManager1:
     "ctl00$ContentPlaceHolder1$ctl00$ContentPlaceHolder1$RadAjaxPanel1Panel|ctl00$ContentPlaceHolder1$StudiaComboBox",
-  ctl00$ContentPlaceHolder1$StudiaComboBox: studiesText,
-  ctl00$ContentPlaceHolder1$SemestrComboBox: "2023/2024 zimowy",
   ctl00_ContentPlaceHolder1_StudiaComboBox_ClientState: {
     text: studiesText,
   },
@@ -52,7 +50,6 @@ export const lectureDetailsPayload = (
 
 export const timetableWithDatePayload = (
   viewstate: string,
-  studies: string,
   groupIDs: number[],
   dayInWeek?: { year: number; month: number; day: number },
 ) => {
@@ -70,7 +67,6 @@ export const timetableWithDatePayload = (
   return {
     ctl00$RadScriptManager1:
       "ctl00$ContentPlaceHolder1$ctl00$ContentPlaceHolder1$RadAjaxPanel1Panel|ctl00$ContentPlaceHolder1$PlanZajecRadScheduler$SelectedDateCalendar",
-    ctl00$ContentPlaceHolder1$StudiaComboBox: studies,
     ctl00_ContentPlaceHolder1_GrupyListBox_ClientState: {
       selectedIndices: groupIDs,
     },
