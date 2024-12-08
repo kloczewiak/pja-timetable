@@ -304,32 +304,20 @@ function EventHoverContent({ lecture }: { lecture: LectureDetails }) {
         <CardDescription>{lecture.classType}</CardDescription>
       </CardHeader>
       <CardContent className="p-4 pt-0 grid grid-cols-[auto,_1fr] gap-x-2">
-        {lecture.lecturers.length > 1 ? (
-          <EventHoverProperty
-            label={getLecturerName(lecture.classType, true)}
-            value={lecture.lecturers.map(
-              (lecturer) => `${lecturer.lastName} ${lecturer.firstName}`,
-            )}
-          />
-        ) : (
-          <EventHoverProperty
-            label={getLecturerName(lecture.classType)}
-            value={`${lecture.lecturers[0].lastName} ${lecture.lecturers[0].firstName}`}
-          />
-        )}
         <EventHoverProperty
-          label={lecture.groups.length > 1 ? "Grupy" : "Grupa"}
-          value={lecture.groups.join(", ")}
+          label={getLecturerName(
+            lecture.classType,
+            lecture.lecturers.length > 1,
+          )}
+          value={lecture.lecturers.map(
+            (lecturer) => `${lecturer.lastName} ${lecturer.firstName}`,
+          )}
         />
         <EventHoverProperty
           label="Sala"
-          value={`${lecture.building}/${lecture.room} ${
+          value={`${lecture.building}/${lecture.room}${
             lecture.roomDescription ? ` - ${lecture.roomDescription}` : ""
           }`}
-        />
-        <EventHoverProperty
-          label="Czas trwania"
-          value={`${lecture.duration} min`}
         />
         <EventHoverProperty
           label="Data"
@@ -338,12 +326,31 @@ function EventHoverContent({ lecture }: { lecture: LectureDetails }) {
           })}
         />
         <EventHoverProperty
-          label="Czas rozp."
-          value={formatDate(lecture.startTime, "HH:mm", { locale: pl })}
+          label="Godzina"
+          value={
+            formatDate(lecture.startTime, "HH:mm", { locale: pl }) +
+            " - " +
+            formatDate(lecture.endTime, "HH:mm", { locale: pl })
+          }
         />
         <EventHoverProperty
-          label="Czas zak."
-          value={formatDate(lecture.endTime, "HH:mm", { locale: pl })}
+          label="Czas trwania"
+          value={`${lecture.duration} min`}
+        />
+        <EventHoverProperty
+          label={lecture.groups.length > 1 ? "Grupy" : "Grupa"}
+          value={lecture.groups}
+        />
+        <EventHoverProperty
+          label={"Liczba osób"}
+          value={
+            lecture.studentCount.ITN
+              ? [
+                  `Normalne: ${lecture.studentCount.normal}`,
+                  `ITN: ${lecture.studentCount.ITN}`,
+                ]
+              : lecture.studentCount.normal
+          }
         />
         {lecture.MSTeamsCode && (
           <EventHoverProperty
@@ -374,14 +381,13 @@ function EventHoverProperty({
   value,
 }: {
   label: string;
-  value: string | string[] | number | number[];
+  value: string | number | (string | number)[];
 }) {
-  return (
-    <>
-      <p className="font-medium text-right">{label}</p>
-      {typeof value === "string" || typeof value === "number" ? (
-        <p>{value}</p>
-      ) : (
+  var content: React.ReactNode;
+
+  if (Array.isArray(value)) {
+    content =
+      value.length > 1 ? (
         <div className="flex flex-col pt-0.5">
           {value.map((line) => (
             <p key={line} className="leading-5">
@@ -389,7 +395,17 @@ function EventHoverProperty({
             </p>
           ))}
         </div>
-      )}
+      ) : (
+        <p>{value[0]}</p>
+      );
+  } else {
+    content = <p>{value}</p>;
+  }
+
+  return (
+    <>
+      <p className="font-medium text-right">{label}</p>
+      {content}
     </>
   );
 }
