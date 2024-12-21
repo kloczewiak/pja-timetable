@@ -26,12 +26,12 @@ import {
   Calendar as FullCalendar,
 } from "@/components/ui/full-calendar";
 import { cn } from "@/lib/utils";
-import { format as formatDate } from "date-fns";
+import { format as formatDate, startOfWeek } from "date-fns";
 import { pl } from "date-fns/locale";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function Page() {
   const searchParams = useSearchParams();
@@ -41,6 +41,10 @@ export default function Page() {
     (LectureDetails | TemporaryLectureDetails)[]
   >([]);
   const [date, setDate] = useState<Date>();
+  const firstDayOfWeek = useMemo(() => {
+    if (!date) return undefined;
+    return startOfWeek(date, { weekStartsOn: 1 });
+  }, [date ? startOfWeek(date, { weekStartsOn: 1 }).getTime() : undefined]);
 
   const [viewstate, setViewstate] = useState<string>();
   const [studentGroups, setStudentGroups] = useState<string[]>();
@@ -73,7 +77,7 @@ export default function Page() {
   useEffect(() => {
     if (!semester || selectedGroups.length === 0)
       throw new Error("Missing semester or group");
-    if (!date) return;
+    if (!firstDayOfWeek) return;
 
     const run = async () => {
       if (!studentGroups || !viewstate) return;
@@ -82,9 +86,9 @@ export default function Page() {
       const indexes = selectedGroups.map((g) => studentGroups.indexOf(g));
 
       const timetable = await getTimetable(viewstate, indexes, {
-        year: date.getFullYear(),
-        month: date.getMonth() + 1,
-        day: date.getDate(),
+        year: firstDayOfWeek.getFullYear(),
+        month: firstDayOfWeek.getMonth() + 1,
+        day: firstDayOfWeek.getDate(),
       });
 
       if (timetable.data.tempDetails) {
@@ -118,7 +122,7 @@ export default function Page() {
       );
     };
     run();
-  }, [date, viewstate, studentGroups]);
+  }, [firstDayOfWeek, viewstate, studentGroups]);
 
   return (
     <div className="flex flex-col gap-5">
