@@ -37,6 +37,7 @@ import {
   forwardRef,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -572,7 +573,21 @@ const CalendarCurrentDate = () => {
 
 const TimeTable = () => {
   const { hourDisplay } = useCalendar();
+  const [reload, setReload] = useState(false);
   const now = new Date();
+
+  useEffect(() => {
+    const seconds = now.getSeconds();
+    const milis = now.getMilliseconds();
+
+    const timeUntilNextMinute = (60 - seconds) * 1000 - milis;
+
+    const timeout = setTimeout(() => {
+      setReload(!reload);
+    }, timeUntilNextMinute);
+
+    return () => clearTimeout(timeout);
+  }, [reload]);
 
   return (
     <div className="flex h-full w-10 flex-col pr-2">
