@@ -583,7 +583,7 @@ const TimeTable = () => {
     const timeUntilNextMinute = (60 - seconds) * 1000 - milis;
 
     const timeout = setTimeout(() => {
-      setReload(!reload);
+      setReload((r) => !r);
     }, timeUntilNextMinute);
 
     return () => clearTimeout(timeout);
