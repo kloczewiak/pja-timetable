@@ -17,6 +17,7 @@ import {
   setHours,
   setMinutes,
 } from "date-fns";
+import { join } from "path";
 
 export async function getSemesters(): Promise<WithViewstate<string[]>> {
   const response = await fetch(
@@ -427,23 +428,47 @@ function parseTemporaryLectureDetails(
       if (!content) return;
 
       const text = getTextNode(content.childNodes);
-      const subjectCodeMatch = text.match(/.+?( )/);
-      if (!subjectCodeMatch) return;
-      const subjectCode = subjectCodeMatch[0].trim();
 
-      const rest = text.replace(subjectCode, "").trim();
+      let classType;
+      let subjectCode;
+      let rest;
+      if (text.includes("Egzamin")) {
+        classType = "Egzamin";
+        const nameOfLecturerMatch = text.match(
+          / ([\wąćęłńóśżź]+? [\wąćęłńóśżź]+?) s\./,
+        );
+        if (!nameOfLecturerMatch) return;
 
-      const classTypeMatch = rest.match(/.+?( )/);
-      if (!classTypeMatch) return;
-      const classType = classTypeMatch[0].trim();
+        const rest2 = text.replace(nameOfLecturerMatch[1], "").trim();
+        const subjectName = rest2.match(/(.+?) +s\./);
 
-      const rest2 = rest.replace(classType, "").trim();
+        if (!subjectName) return;
+        subjectCode = subjectName[1]
+          .replace("Egzamin ", "")
+          .split(" ")
+          .filter((s) => s.length > 2)
+          .map((s) => s[0].toUpperCase())
+          .join("");
+        rest = rest2.replace(subjectName[1], "").trim();
+      } else {
+        const subjectCodeMatch = text.match(/.+?( )/);
+        if (!subjectCodeMatch) return;
 
-      const [buildingWithPrefix, rest3] = rest2.split(/[ /](.*)/);
-      const room = rest3.match(/\d+/)?.[0] ?? "";
-      const roomDescription =
-        rest3.replace(room, "").trim().replace("  ", " ") || undefined;
-      const building = buildingWithPrefix.slice(2);
+        subjectCode = subjectCodeMatch[0].trim();
+        const rest2 = text.replace(subjectCode, "").trim();
+        const classTypeMatch = rest2.match(/.+?( )/);
+        if (!classTypeMatch) return;
+        classType = classTypeMatch[0].trim();
+        rest = rest2.replace(classType, "").trim();
+      }
+
+      const buildingMatch = rest.match(/s. *([^ ]+)/);
+      if (!buildingMatch) return;
+
+      const [building, room] = buildingMatch[1].split("/");
+
+      const roomDescriptionMatch = rest.match(/s. *.+? (.+)/);
+      const roomDescription = roomDescriptionMatch?.[1] ?? "";
 
       elements.push({
         startTime,
