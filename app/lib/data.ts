@@ -17,7 +17,6 @@ import {
   setHours,
   setMinutes,
 } from "date-fns";
-import { join } from "path";
 
 export async function getSemesters(): Promise<WithViewstate<string[]>> {
   const response = await fetch(
@@ -297,42 +296,74 @@ export async function getLectureDetails(
 function parseLectureDetails(
   lecture: { name: string; value: string }[],
 ): LectureDetails {
-  const studentCountSplit = lecture[0].value.split(" ");
-  const studentCount: StudentCount = {
-    normal: parseInt(studentCountSplit[0]),
-    ITN: parseInt(studentCountSplit[1]),
-  };
+  const studentCountSplit = lecture
+    .find((n) => n.name === "Liczba studentów")
+    ?.value.split(" ");
+  const studentCount: StudentCount = studentCountSplit
+    ? {
+        normal: parseInt(studentCountSplit[0]),
+        ITN: parseInt(studentCountSplit[1]),
+      }
+    : {
+        normal: -1,
+        ITN: -1,
+      };
 
-  const subjectName = lecture[1].value;
-  const subjectCode = lecture[2].value;
-  const classType = lecture[3].value as ClassType;
-  const groups = lecture[4].value.split(", ");
+  const subjectName =
+    lecture.find((n) => n.name === "Nazwy przedmiotów")?.value ?? "";
+  const subjectCode =
+    lecture.find((n) => n.name === "Kody przedmiotów")?.value ?? "";
+  const classType = (lecture
+    .find((n) => n.name.includes("Typ"))
+    ?.value.toLowerCase() ?? "") as ClassType;
+  const groups =
+    lecture.find((n) => n.name.includes("Grupy"))?.value.split(", ") ?? [];
 
-  const lecturers = lecture[5].value.split(", ").map((lecturer) => {
-    const [lastName, firstName] = lecturer.split(" ");
-    return { lastName, firstName };
-  });
+  const lecturers = lecture
+    .find((n) => n.name === "Dydaktycy" || n.name === "Osoba rezerwująca")
+    ?.value.split(", ")
+    .map((lecturer) => {
+      const [lastName, firstName] = lecturer.split(" ");
+      return { lastName, firstName };
+    }) ?? [{ lastName: "", firstName: "" }];
 
   // lecture[6] is for building but it's badly formatted
 
-  const [building, rest] = lecture[7].value.split(/[ /](.*)/);
-  const room = rest.match(/\d+/)?.[0] ?? "";
-  const roomDescription =
-    rest.replace(room, "").trim().replace("  ", " ") || undefined;
+  const asdf = lecture.find((n) => n.name === "Sala")?.value;
+  const [building, roomAndDescription] = asdf?.split("/") ?? ["", " "];
 
-  const classDate = parseDate(lecture[8].value, "dd.MM.yyyy", new Date());
+  const [room, roomDescription] = roomAndDescription.split(/ (.*)/);
 
+  const classDateString = lecture.find((n) => n.name === "Data zajęć")?.value;
+  if (!classDateString) throw new Error("No class date found");
+  const classDate = parseDate(classDateString, "dd.MM.yyyy", new Date());
+
+  const startTimeString = lecture.find(
+    (n) => n.name === "Godz. rozpoczęcia",
+  )?.value;
+  if (!startTimeString) throw new Error("No class start time found");
   const startTime = fromZonedTime(
-    parseDate(lecture[9].value, "HH:mm:ss", classDate),
-    "Europe/Warsaw",
-  );
-  const endTime = fromZonedTime(
-    parseDate(lecture[10].value, "HH:mm:ss", classDate),
+    parseDate(startTimeString, "HH:mm:ss", classDate),
     "Europe/Warsaw",
   );
 
-  const duration = parseInt(lecture[11].value.replace(" min", ""));
-  const MSTeamsCode = lecture[12].value;
+  const endTimeString = lecture.find(
+    (n) => n.name === "Godz. zakończenia",
+  )?.value;
+  if (!endTimeString) throw new Error("No class end time found");
+  const endTime = fromZonedTime(
+    parseDate(endTimeString, "HH:mm:ss", classDate),
+    "Europe/Warsaw",
+  );
+
+  const durationString = lecture.find((n) => n.name === "Czas trwania")?.value;
+  // TODO: Calculate fallback from start and end time
+  const duration = durationString
+    ? parseInt(durationString.replace(" min", ""))
+    : 60;
+
+  const MSTeamsCode =
+    lecture.find((n) => n.name === "Kod MS Teams")?.value ?? "";
 
   return {
     studentCount,
@@ -390,95 +421,94 @@ function parseTemporaryLectureDetails(
       .filter((node) => node.rawTagName === "td");
     tds.forEach((td, tdIndex) => {
       const adjustedDay = addDays(firstDayOfWeek, tdIndex);
+      const containers = td.querySelectorAll(".rsApt.rsAptSubject.rsAptSimple");
+      containers.forEach((container) => {
+        const hourDecimal = trIndex / 2 + 6;
+        const hourFraction = hourDecimal % 1;
+        const hour = hourDecimal - hourFraction;
 
-      const container = td.querySelector(".rsApt.rsAptSubject.rsAptSimple");
-      if (!container) {
-        return;
-      }
-      const hourDecimal = trIndex / 2 + 6;
-      const hourFraction = hourDecimal % 1;
-      const hour = hourDecimal - hourFraction;
+        const additionalMinutes = hourFraction * 60;
 
-      const additionalMinutes = hourFraction * 60;
+        // Calculating start time based on position
+        const top = container.getAttribute("style")?.match(/top:(\d+)px/);
+        const topValue = top ? parseInt(top[1]) : 0;
 
-      // Calculating start time based on position
-      const top = container.getAttribute("style")?.match(/top:(\d+)px/);
-      const topValue = top ? parseInt(top[1]) : 0;
+        const trHeight = tr.getAttribute("style")?.match(/height:(\d+)px/);
+        const trHeightValue = trHeight ? parseInt(trHeight[1]) : 0;
 
-      const trHeight = tr.getAttribute("style")?.match(/height:(\d+)px/);
-      const trHeightValue = trHeight ? parseInt(trHeight[1]) : 0;
+        const estimatedMinutes =
+          Math.round((topValue / trHeightValue) * 2) * 15;
 
-      const estimatedMinutes = Math.round((topValue / trHeightValue) * 2) * 15;
+        const minutes = estimatedMinutes + additionalMinutes;
 
-      const minutes = estimatedMinutes + additionalMinutes;
-
-      const startTime = fromZonedTime(
-        setHours(setMinutes(adjustedDay, minutes), hour),
-        "Europe/Warsaw",
-      );
-
-      // Calculating end time
-      const height = container.getAttribute("style")?.match(/height:(\d+)px/);
-      const heightValue = height ? parseInt(height[1]) : 0;
-
-      const duration = Math.round((heightValue / trHeightValue) * 2) * 15;
-      const endTime = addMinutes(startTime, duration);
-
-      const content = container.querySelector(".rsAptContent");
-      if (!content) return;
-
-      const text = getTextNode(content.childNodes);
-
-      let classType;
-      let subjectCode;
-      let rest;
-      if (text.includes("Egzamin")) {
-        classType = "Egzamin";
-        const nameOfLecturerMatch = text.match(
-          / ([\wąćęłńóśżź]+? [\wąćęłńóśżź]+?) s\./,
+        const startTime = fromZonedTime(
+          setHours(setMinutes(adjustedDay, minutes), hour),
+          "Europe/Warsaw",
         );
-        if (!nameOfLecturerMatch) return;
 
-        const rest2 = text.replace(nameOfLecturerMatch[1], "").trim();
-        const subjectName = rest2.match(/(.+?) +s\./);
+        // Calculating end time
+        const height = container.getAttribute("style")?.match(/height:(\d+)px/);
+        const heightValue = height ? parseInt(height[1]) : 0;
 
-        if (!subjectName) return;
-        subjectCode = subjectName[1]
-          .replace("Egzamin ", "")
-          .split(" ")
-          .filter((s) => s.length > 2)
-          .map((s) => s[0].toUpperCase())
-          .join("");
-        rest = rest2.replace(subjectName[1], "").trim();
-      } else {
-        const subjectCodeMatch = text.match(/.+?( )/);
-        if (!subjectCodeMatch) return;
+        const duration = Math.round((heightValue / trHeightValue) * 2) * 15;
+        const endTime = addMinutes(startTime, duration);
 
-        subjectCode = subjectCodeMatch[0].trim();
-        const rest2 = text.replace(subjectCode, "").trim();
-        const classTypeMatch = rest2.match(/.+?( )/);
-        if (!classTypeMatch) return;
-        classType = classTypeMatch[0].trim();
-        rest = rest2.replace(classType, "").trim();
-      }
+        const content = container.querySelector(".rsAptContent");
+        if (!content) return;
 
-      const buildingMatch = rest.match(/s. *([^ ]+)/);
-      if (!buildingMatch) return;
+        const text = getTextNode(content.childNodes);
 
-      const [building, room] = buildingMatch[1].split("/");
+        let classType;
+        let subjectCode;
+        let rest;
+        if (text.includes("Egzamin")) {
+          classType = "egzamin";
+          const nameOfLecturerMatch = text.match(
+            / ([\wąćęłńóśżź]+? [\wąćęłńóśżź]+?) s\./,
+          );
+          if (!nameOfLecturerMatch) return;
 
-      const roomDescriptionMatch = rest.match(/s. *.+? (.+)/);
-      const roomDescription = roomDescriptionMatch?.[1] ?? "";
+          const rest2 = text.replace(nameOfLecturerMatch[1], "").trim();
+          const subjectName = rest2.match(/(.+?) +s\./);
 
-      elements.push({
-        startTime,
-        endTime,
-        subjectCode,
-        classType,
-        building,
-        room,
-        roomDescription,
-        duration,
+          if (!subjectName) return;
+          subjectCode = subjectName[1]
+            .replace("Egzamin ", "")
+            .split(" ")
+            .filter((s) => s.length > 2)
+            .map((s) => s[0].toUpperCase())
+            .join("");
+          rest = rest2.replace(subjectName[1], "").trim();
+        } else {
+          const subjectCodeMatch = text.match(/.+?( )/);
+          if (!subjectCodeMatch) return;
+
+          subjectCode = subjectCodeMatch[0].trim();
+          const rest2 = text.replace(subjectCode, "").trim();
+          const classTypeMatch = rest2.match(/.+?( )/);
+          if (!classTypeMatch) return;
+          classType = classTypeMatch[0].trim().toLowerCase();
+          rest = rest2.replace(classType, "").trim();
+        }
+
+        const buildingMatch = rest.match(/s. *([^ ]+)/);
+        if (!buildingMatch) return;
+
+        const [building, room] = buildingMatch[1].split("/");
+
+        const roomDescriptionMatch = rest.match(/s. *.+? (.+)/);
+        const roomDescription = roomDescriptionMatch?.[1] ?? "";
+
+        elements.push({
+          startTime,
+          endTime,
+          subjectCode,
+          classType,
+          building,
+          room,
+          roomDescription,
+          duration,
+        });
       });
     });
   });

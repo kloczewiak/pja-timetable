@@ -147,35 +147,42 @@ function DisplayCalendar({
   setDate: (date: Date) => void;
   loading?: boolean;
 }) {
-  const events: CalendarEvent[] = lectures.map((lecture) => {
-    var color: CalendarEvent["color"];
-    if (lecture.classType === "Wykład") {
-      color = "blue";
-    } else if (lecture.classType === "Ćwiczenia") {
-      color = "green";
-    } else if (lecture.classType === "Lektorat") {
-      color = "purple";
-    } else {
-      color = "pink";
-    }
+  const events: CalendarEvent[] = lectures
+    .sort((a, b) => parseInt(a.room) - parseInt(b.room))
+    .map((lecture) => {
+      var color: CalendarEvent["color"];
+      if (lecture.classType === "wykład") {
+        color = "blue";
+      } else if (lecture.classType === "ćwiczenia") {
+        color = "green";
+      } else if (lecture.classType === "lektorat") {
+        color = "purple";
+      } else {
+        color = "pink";
+      }
 
-    return {
-      id: lecture.subjectCode + lecture.startTime + lecture.endTime,
-      start: lecture.startTime,
-      end: lecture.endTime,
-      title: `${lecture.subjectCode} - ${lecture.classType}\n${lecture.building}/${lecture.room}${lecture.roomDescription ? ` - ${lecture.roomDescription}` : ""}`,
-      color: color,
-      hover:
-        // If lecture is using temporary details, don't show hover
-        "lecturers" in lecture
-          ? {
-              cardProps: { openDelay: 300, closeDelay: 150 },
-              contentProps: { className: "p-0 w-80" },
-              content: <EventHoverContent lecture={lecture} />,
-            }
-          : undefined,
-    };
-  });
+      return {
+        id:
+          lecture.subjectCode +
+          lecture.startTime +
+          lecture.endTime +
+          lecture.room +
+          lecture.building,
+        start: lecture.startTime,
+        end: lecture.endTime,
+        title: `${lecture.subjectCode} - ${lecture.classType[0].toUpperCase() + lecture.classType.slice(1).toLowerCase()}\n${lecture.building}/${lecture.room}${lecture.roomDescription ? ` - ${lecture.roomDescription}` : ""}`,
+        color: color,
+        hover:
+          // If lecture is using temporary details, don't show hover
+          "lecturers" in lecture
+            ? {
+                cardProps: { openDelay: 300, closeDelay: 150 },
+                contentProps: { className: "p-0 w-80" },
+                content: <EventHoverContent lecture={lecture} />,
+              }
+            : undefined,
+      };
+    });
 
   const startWeekOn =
     lectures.length > 0
@@ -282,12 +289,14 @@ function DisplayCalendar({
                 "flex-1 relative transition-[filter] basis-full self-center w-full",
                 loading && "blur transition-none",
               )}
-              style={{
-                maxWidth:
-                  endWeekOn !== undefined && startWeekOn !== undefined
-                    ? `${(endWeekOn - startWeekOn + 1) * 250}px`
-                    : "100%",
-              }}
+              style={
+                {
+                  // maxWidth:
+                  //   endWeekOn !== undefined && startWeekOn !== undefined
+                  //     ? `${(endWeekOn - startWeekOn + 1) * 250}px`
+                  //     : "100%",
+                }
+              }
             >
               <CalendarWeekView startOnDay={startWeekOn} endOnDay={endWeekOn} />
             </div>
@@ -305,7 +314,10 @@ function EventHoverContent({ lecture }: { lecture: LectureDetails }) {
         <CardTitle className="text-lg leading-6">
           {lecture.subjectName}
         </CardTitle>
-        <CardDescription>{lecture.classType}</CardDescription>
+        <CardDescription>
+          {lecture.classType[0].toUpperCase() +
+            lecture.classType.slice(1).toLowerCase()}
+        </CardDescription>
       </CardHeader>
       <CardContent className="p-4 pt-0 grid grid-cols-[auto,_1fr] gap-x-2">
         <EventHoverProperty

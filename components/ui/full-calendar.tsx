@@ -236,53 +236,59 @@ const EventGroup = ({
   events: CalendarEvent[];
   hour: Date;
 }) => {
-  return (
-    <div className="relative border-t last:border-b">
-      {events
-        .filter((event) => isSameHour(event.start, hour))
-        .map((event) => {
-          const hoursDifference =
-            differenceInMinutes(event.end, event.start) / 60;
-          const startPosition = event.start.getMinutes() / 60;
+  const currentHourEvents = events.filter((event) =>
+    isSameHour(event.start, hour),
+  );
 
-          return (
-            <div
-              key={event.id}
-              className="absolute overflow-hidden inset-x-0 z-10"
-              style={{
-                top: `${startPosition * 100}%`,
-                height: `calc(${hoursDifference * 100}% + 1px)`,
-              }}
-            >
-              <HybridTooltip {...event.hover?.cardProps}>
-                <HybridTooltipTrigger className="w-full h-full justify-start items-start">
-                  <div
-                    className={cn(
-                      "h-full",
-                      dayEventVariants({ variant: event.color }),
-                      hoursDifference < 1 && "flex flex-row gap-2",
-                    )}
-                  >
-                    {event.title.split("\n").map((line) => (
-                      <div key={line} className="text-nowrap">
-                        {line}
-                      </div>
-                    ))}
-                  </div>
-                </HybridTooltipTrigger>
-                {event.hover ? (
-                  <HybridTooltipContent {...event.hover.contentProps}>
-                    {event.hover.content}
-                  </HybridTooltipContent>
-                ) : (
-                  <HybridTooltipContent>
-                    <p>Ładowanie...</p>
-                  </HybridTooltipContent>
-                )}
-              </HybridTooltip>
-            </div>
-          );
-        })}
+  const elemCount = currentHourEvents.length;
+
+  return (
+    <div className="relative border-t last:border-b flex flex-col">
+      {currentHourEvents.map((event, elemCurr) => {
+        const hoursDifference =
+          differenceInMinutes(event.end, event.start) / 60;
+        const startPosition = event.start.getMinutes() / 60;
+
+        return (
+          <div
+            key={event.id}
+            className="absolute overflow-hidden inset-x-0 z-10"
+            style={{
+              left: `${(elemCurr / elemCount) * 100}%`,
+              right: `${((elemCount - elemCurr - 1) / elemCount) * 100}%`,
+              top: `${startPosition * 100}%`,
+              height: `calc(${hoursDifference * 100}% + 1px)`,
+            }}
+          >
+            <HybridTooltip {...event.hover?.cardProps}>
+              <HybridTooltipTrigger className="w-full h-full justify-start items-start">
+                <div
+                  className={cn(
+                    "h-full",
+                    dayEventVariants({ variant: event.color }),
+                    hoursDifference < 1 && "flex flex-row gap-2",
+                  )}
+                >
+                  {event.title.split("\n").map((line) => (
+                    <div key={line} className="text-nowrap">
+                      {line}
+                    </div>
+                  ))}
+                </div>
+              </HybridTooltipTrigger>
+              {event.hover ? (
+                <HybridTooltipContent {...event.hover.contentProps}>
+                  {event.hover.content}
+                </HybridTooltipContent>
+              ) : (
+                <HybridTooltipContent>
+                  <p>Ładowanie...</p>
+                </HybridTooltipContent>
+              )}
+            </HybridTooltip>
+          </div>
+        );
+      })}
     </div>
   );
 };
